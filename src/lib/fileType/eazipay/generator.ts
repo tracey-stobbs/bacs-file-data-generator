@@ -150,6 +150,18 @@ export function generateInvalidEaziPayRow(
   const fieldsToInvalidate = faker.helpers
     .shuffle(invalidatableFields)
     .slice(0, numInvalid);
+  // Ensure at least one of the commonly-detected invalid fields is included so
+  // simple heuristic tests (sort code alphabetic / negative amount / txn 'XX')
+  // reliably detect an invalid row.
+  const detectionFields = [
+    'transactionCode',
+    'destinationSortCode',
+    'amount',
+  ];
+  if (!fieldsToInvalidate.some((f) => detectionFields.includes(String(f)))) {
+    // Prefer destinationSortCode since it's non-destructive elsewhere.
+    fieldsToInvalidate.push('destinationSortCode');
+  }
   for (const fieldName of fieldsToInvalidate) {
     switch (fieldName) {
       case "transactionCode":
@@ -356,4 +368,69 @@ export function previewRows(
       sun: req.sun,
     }),
   };
+}
+
+/**
+ * Generate EaziPay rows with optional constraint on allowed transaction codes.
+ * This is a higher-level helper so API layers don't need to replicate filtering logic.
+ * If a faker seed (FAKER_SEED) is provided it seeds deterministically for repeatable outputs.
+ */
+export function generateEaziPayRowsConstrained(params: {
+  numberOfRows?: number;
+  allowedTransactionCodes?: string[];
+  dateFormat?: string;
+  originating?: { sortCode?: string; accountNumber?: string; accountName?: string };
+}): string[][] {
+  const seed = process.env.FAKER_SEED;
+  if (seed) {
+    try { faker.seed(Number(seed)); } catch { /* ignore */ }
+  }
+  const dateFormat: EaziPayDateFormat = (params.dateFormat as EaziPayDateFormat | undefined) || 'YYYY-MM-DD';
+  const rows: string[][] = [];
+  const count = params.numberOfRows ?? 10;
+  const allowed = params.allowedTransactionCodes && params.allowedTransactionCodes.length > 0
+    ? params.allowedTransactionCodes
+    : (EaziPayValidator.allowedTransactionCodes as readonly string[]);
+  const req = { originating: params.originating };
+  for (let i = 0; i < count; i++) {
+    const rowObj = generateValidEaziPayRow(req, dateFormat);
+    if (!allowed.includes(rowObj.transactionCode)) {
+      // Deterministic pick based on index to keep distribution stable across seeds
+      (rowObj as any).transactionCode = allowed[i % allowed.length];
+      if (['0C','0N','0S'].includes(rowObj.transactionCode)) (rowObj as any).amount = 0;
+    }
+    rows.push(formatEaziPayRowAsArray(rowObj));
+  }
+  return rows;
+}
+
+/**
+ * Version of generateEaziPayRowsConstrained that returns the rows plus
+ * metadata describing which originating/client values were used so callers
+ * (for example bacs-report-api) can persist that in the output metadata
+ * and pass it to the XML generator.
+ */
+export function generateEaziPayRowsConstrainedWithMeta(params: {
+  numberOfRows?: number;
+  allowedTransactionCodes?: string[];
+  dateFormat?: string;
+  originating?: { sortCode?: string; accountNumber?: string; accountName?: string; sunNumber?: string; sunName?: string; clientName?: string; email?: string; prefix?: string; shortName?: string };
+}) {
+  const rows = generateEaziPayRowsConstrained(params as any);
+  const originating = params?.originating || {};
+  // Normalize metadata keys we want to record
+  const meta = {
+    clientName: originating.clientName ?? null,
+    originating: {
+      sortCode: originating.sortCode ?? null,
+      accountNumber: originating.accountNumber ?? null,
+      accountName: originating.accountName ?? null,
+      sunNumber: originating.sunNumber ?? null,
+      sunName: originating.sunName ?? null,
+      email: originating.email ?? null,
+      prefix: originating.prefix ?? null,
+      shortName: originating.shortName ?? null,
+    },
+  };
+  return { rows, metadata: meta };
 }
