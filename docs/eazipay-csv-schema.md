@@ -23,6 +23,14 @@ This document describes the EaziPay CSV row structure produced by `generateCsv({
 ## Determinism & Seeding
 Set `FAKER_SEED` to a numeric value to make row generation deterministic.
 
+## SUN rules and opt-in forcing
+- SUN Name (column 11) is now required for EaziPay generation and will always be populated from the originating metadata provided to the generator.
+- The SUN Number (column 13) is optional and only emitted for transaction codes that allow a SUN. By default callers do not populate the SUN Number.
+- For developer / manual runs there is an escape hatch: pass `--force-sun` to the CLI (or set `options.forceSun` when calling the library). When `forceSun` is true and an explicit originating.sunNumber is supplied (for example via `--filter.originating.sunNumber=797154`), the adapter will pass that exact numeric value to the generator and the generator will populate column 13 with the exact supplied SUN for every eligible row. This guarantees deterministic SUN values for testing.
+
+## Sanitisation and formatting changes
+- Destination account names are sanitized by the generator: double quotes, commas and ASCII control characters are stripped and excessive whitespace is collapsed before truncation to <=18 characters. This prevents CSV quoting edge-cases for downstream consumers.
+
 ## Transaction Code Constraints
 | Report Type | Allowed Codes |
 |-------------|---------------|

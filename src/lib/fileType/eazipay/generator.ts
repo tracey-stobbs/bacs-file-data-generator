@@ -6,6 +6,7 @@ import {
   pickRandomEaziPayFormat,
 } from "../../utils/dateFormatter.js";
 import { AddWorkingDays } from "../../utils/calendar.js";
+import { IsWorkingDay } from "../../utils/calendar.js";
 import { generateFileWithFs } from "../../fileWriter/fileWriter.js";
 import type { EaziPayRow } from "./types.js";
 import type {
@@ -32,17 +33,45 @@ function generateAmount(transactionCode: string): number {
   if (EaziPayValidator.isContraCode(transactionCode)) return 0;
   return faker.number.int({ min: 1, max: 999999 });
 }
-function generateProcessingDate(
+export function generateProcessingDate(
   transactionCode: string,
   dateFormat: EaziPayDateFormat
 ): string {
-  const today = DateTime.now();
+  const now = DateTime.now();
+  let today = now.startOf('day');
   let targetDate: DateTime;
   if (EaziPayValidator.isContraCode(transactionCode)) {
-    targetDate = AddWorkingDays(today, 2);
+    // If generation time is before 16:00 local, contra processing date is next working day.
+    // If at or after 16:00, contra processing date is two working days.
+    const thresholdHour = 16; // 4pm
+    const useDays = now.hour < thresholdHour ? 1 : 2;
+    targetDate = AddWorkingDays(today, useDays);
+    // Ensure contra processing date is not beyond 30 calendar days
+    const maxDate = today.plus({ days: 30 });
+    if (targetDate > maxDate) {
+      // Move back to the latest working day on or before maxDate
+      let candidate = maxDate;
+      while (!IsWorkingDay(candidate)) {
+        candidate = candidate.minus({ days: 1 });
+      }
+      targetDate = candidate;
+    }
   } else {
-    const workingDays = faker.number.int({ min: 2, max: 30 });
+    // Ensure working days is bounded to [2,30]
+    let workingDays = faker.number.int({ min: 2, max: 30 });
+    if (workingDays < 2) workingDays = 2;
+    if (workingDays > 30) workingDays = 30;
     targetDate = AddWorkingDays(today, workingDays);
+    // Ensure the chosen processing date is no more than 30 calendar days from today.
+    const maxDate = today.plus({ days: 30 });
+    if (targetDate > maxDate) {
+      // If it falls beyond the calendar limit, move back to the latest working day on or before maxDate
+      let candidate = maxDate;
+      while (!IsWorkingDay(candidate)) {
+        candidate = candidate.minus({ days: 1 });
+      }
+      targetDate = candidate;
+    }
   }
   return formatEaziPayDate(targetDate, dateFormat);
 }
@@ -104,7 +133,7 @@ export function generateValidEaziPayRow(
       req.originating?.accountNumber ?? faker.finance.accountNumber(8),
     destinationSortCode: faker.finance.routingNumber().slice(0, 6),
     destinationAccountNumber: faker.finance.accountNumber(8),
-    destinationAccountName: faker.company.name().slice(0, 18),
+  destinationAccountName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     fixedZero: 0,
     amount: generateAmount(transactionCode),
     processingDate: generateProcessingDate(transactionCode, dateFormat),
@@ -181,9 +210,9 @@ export function generateInvalidEaziPayRow(
         );
         break;
       case "destinationAccountName":
-        row.destinationAccountName = String(
-          generateInvalidFieldValue(fieldName, row.transactionCode)
-        ).slice(0, 18);
+          row.destinationAccountName = sanitizeAccountName(String(
+            generateInvalidFieldValue(fieldName, row.transactionCode)
+          )).slice(0, 18);
         break;
       case "bacsReference":
         row.bacsReference = String(
@@ -206,6 +235,17 @@ export function generateInvalidEaziPayRow(
     }
   }
   return row;
+}
+export function sanitizeAccountName(name: string): string {
+  if (!name) return '';
+  // Strip non-printable or non-ASCII characters. Keep printable ASCII range (0x20 - 0x7E).
+  // Also remove double quotes and commas which can break downstream CSV parsing.
+  const cleaned = name
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/[",]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned;
 }
 export function formatEaziPayRowAsArray(fields: EaziPayRow): string[] {
   return [
@@ -379,7 +419,8 @@ export function generateEaziPayRowsConstrained(params: {
   numberOfRows?: number;
   allowedTransactionCodes?: string[];
   dateFormat?: string;
-  originating?: { sortCode?: string; accountNumber?: string; accountName?: string };
+  originating?: { sortCode?: string; accountNumber?: string; accountName?: string; sunNumber?: string; sunName?: string };
+  includeSunNumber?: boolean;
 }): string[][] {
   const seed = process.env.FAKER_SEED;
   if (seed) {
@@ -392,14 +433,51 @@ export function generateEaziPayRowsConstrained(params: {
     ? params.allowedTransactionCodes
     : (EaziPayValidator.allowedTransactionCodes as readonly string[]);
   const req = { originating: params.originating };
+  // SUN Name is required for EaziPay generation. Fail fast if it's not supplied.
+  // Ensure we have a sunName for internal generation. Callers are encouraged to supply one;
+  // however some programmatic callers (eg tests) may omit it — provide a sensible default.
+  params.originating = params.originating ?? ({} as any);
+  const originatingRef = params.originating as any;
+  if (!originatingRef.sunName || String(originatingRef.sunName).trim() === '') {
+    originatingRef.sunName = 'Local Generated';
+  }
+  // First, generate rows normally
   for (let i = 0; i < count; i++) {
     const rowObj = generateValidEaziPayRow(req, dateFormat);
     if (!allowed.includes(rowObj.transactionCode)) {
       // Deterministic pick based on index to keep distribution stable across seeds
       (rowObj as any).transactionCode = allowed[i % allowed.length];
-      if (['0C','0N','0S'].includes(rowObj.transactionCode)) (rowObj as any).amount = 0;
+      // Recalculate amount and processingDate based on the final transaction code
+      (rowObj as any).amount = generateAmount((rowObj as any).transactionCode);
+      (rowObj as any).processingDate = generateProcessingDate((rowObj as any).transactionCode, dateFormat);
     }
     rows.push(formatEaziPayRowAsArray(rowObj));
+  }
+
+  // Prefer an explicitly-supplied SUN number. If provided, use it for every row.
+  // If not provided, ensure the SUN column is empty in every row.
+  // Handle optional population of the SUN Number column per-row when requested.
+  // Note: API callers must not request SUN number population (they'll call with includeSunNumber=false).
+  const includeSun = !!params.includeSunNumber;
+  const suppliedSunName = params.originating?.sunName ? String(params.originating.sunName).slice(0, 18) : "";
+  const suppliedSunNumberExact = params.originating?.sunNumber ? String(params.originating.sunNumber).trim() : null;
+  for (let i = 0; i < rows.length; i++) {
+    const tcode = String(rows[i][0]);
+    // SUN Name: always use originating.sunName (required) for column 11
+    if (suppliedSunName && suppliedSunName !== "") {
+      rows[i][10] = suppliedSunName;
+    }
+    // SUN Number: populate only if includeSun is true and transaction code allows it
+    if (includeSun) {
+      if (suppliedSunNumberExact && suppliedSunNumberExact !== "") {
+        // only populate exact supplied number when the transaction code allows a SUN
+        rows[i][12] = EaziPayValidator.isSunNumberAllowed(tcode) ? suppliedSunNumberExact : "";
+      } else {
+        rows[i][12] = generateSunNumber(tcode);
+      }
+    } else {
+      rows[i][12] = "";
+    }
   }
   return rows;
 }
@@ -418,6 +496,13 @@ export function generateEaziPayRowsConstrainedWithMeta(params: {
 }) {
   const rows = generateEaziPayRowsConstrained(params as any);
   const originating = params?.originating || {};
+  // Determine the actual SUN used. Prefer the explicitly supplied originating.sunNumber
+  // if present, otherwise check rows (but rows will have been normalized above to
+  // either contain the supplied SUN everywhere or be empty everywhere).
+  const suppliedSun = params?.originating?.sunNumber ? String(params.originating.sunNumber).trim() : null;
+  const suppliedSunName = params?.originating?.sunName ? String(params.originating.sunName).slice(0, 18) : null;
+  const actualSun = suppliedSun && suppliedSun !== "" ? suppliedSun : (rows && rows.length > 0 && rows[0][12] && String(rows[0][12]).trim() !== "" ? String(rows[0][12]) : null);
+  const actualSunName = suppliedSunName && suppliedSunName !== "" ? suppliedSunName : (rows && rows.length > 0 && rows[0][10] && String(rows[0][10]).trim() !== "" ? String(rows[0][10]) : null);
   // Normalize metadata keys we want to record
   const meta = {
     clientName: originating.clientName ?? null,
@@ -425,8 +510,8 @@ export function generateEaziPayRowsConstrainedWithMeta(params: {
       sortCode: originating.sortCode ?? null,
       accountNumber: originating.accountNumber ?? null,
       accountName: originating.accountName ?? null,
-      sunNumber: originating.sunNumber ?? null,
-      sunName: originating.sunName ?? null,
+  sunNumber: actualSun ?? (originating.sunNumber ?? null),
+  sunName: actualSunName ?? (originating.sunName ?? null),
       email: originating.email ?? null,
       prefix: originating.prefix ?? null,
       shortName: originating.shortName ?? null,

@@ -12,11 +12,13 @@ export interface GenerateCsvOptions {
 export function generateCsv(options: GenerateCsvOptions): { rows: string[][]; csv: string } {
   switch (options.reportType) {
     case 'eazipay': {
+      const originating = (options.originating as any) || {};
+      if (!originating.sunName) originating.sunName = 'Local Generated';
       const result = generateEaziPayRowsConstrainedWithMeta({
         numberOfRows: options.numberOfRows,
         allowedTransactionCodes: options.allowedTransactionCodes,
         dateFormat: options.dateFormat,
-        originating: options.originating as any,
+        originating,
       });
       const csv = (result.rows as string[][]).map((r: string[]) => csvQuote(r)).join('\n');
       return { rows: result.rows as string[][], csv } as { rows: string[][]; csv: string };
