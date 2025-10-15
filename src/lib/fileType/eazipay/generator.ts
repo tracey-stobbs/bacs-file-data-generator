@@ -118,6 +118,7 @@ export function generateValidEaziPayRow(
       sortCode?: string;
       accountNumber?: string;
       accountName?: string;
+      processingDate?: string | null;
     };
   },
   dateFormat: EaziPayDateFormat
@@ -136,7 +137,7 @@ export function generateValidEaziPayRow(
   destinationAccountName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     fixedZero: 0,
     amount: generateAmount(transactionCode),
-    processingDate: generateProcessingDate(transactionCode, dateFormat),
+  processingDate: req.originating?.processingDate ?? generateProcessingDate(transactionCode, dateFormat),
     empty: undefined,
     sunName: faker.company.name().slice(0, 18),
     bacsReference: generatePaymentReference(),
@@ -149,6 +150,7 @@ export function generateInvalidEaziPayRow(
       sortCode?: string;
       accountNumber?: string;
       accountName?: string;
+      processingDate?: string | null;
     };
   },
   dateFormat: EaziPayDateFormat
@@ -421,6 +423,7 @@ export function generateEaziPayRowsConstrained(params: {
   dateFormat?: string;
   originating?: { sortCode?: string; accountNumber?: string; accountName?: string; sunNumber?: string; sunName?: string };
   includeSunNumber?: boolean;
+  processingDate?: string;
 }): string[][] {
   const seed = process.env.FAKER_SEED;
   if (seed) {
@@ -443,13 +446,21 @@ export function generateEaziPayRowsConstrained(params: {
   }
   // First, generate rows normally
   for (let i = 0; i < count; i++) {
+    // If a fixed processingDate is supplied, ensure the generator uses it
+    if (params.processingDate) {
+      req.originating = req.originating ?? {};
+      (req.originating as any).processingDate = params.processingDate;
+    }
     const rowObj = generateValidEaziPayRow(req, dateFormat);
     if (!allowed.includes(rowObj.transactionCode)) {
       // Deterministic pick based on index to keep distribution stable across seeds
       (rowObj as any).transactionCode = allowed[i % allowed.length];
       // Recalculate amount and processingDate based on the final transaction code
       (rowObj as any).amount = generateAmount((rowObj as any).transactionCode);
-      (rowObj as any).processingDate = generateProcessingDate((rowObj as any).transactionCode, dateFormat);
+      // Only recalculate processingDate when no explicit fixed processingDate was requested.
+      if (!(params && (params as any).processingDate)) {
+        (rowObj as any).processingDate = generateProcessingDate((rowObj as any).transactionCode, dateFormat);
+      }
     }
     rows.push(formatEaziPayRowAsArray(rowObj));
   }
@@ -493,6 +504,7 @@ export function generateEaziPayRowsConstrainedWithMeta(params: {
   allowedTransactionCodes?: string[];
   dateFormat?: string;
   originating?: { sortCode?: string; accountNumber?: string; accountName?: string; sunNumber?: string; sunName?: string; clientName?: string; email?: string; prefix?: string; shortName?: string };
+  processingDate?: string;
 }) {
   const rows = generateEaziPayRowsConstrained(params as any);
   const originating = params?.originating || {};
@@ -515,6 +527,7 @@ export function generateEaziPayRowsConstrainedWithMeta(params: {
       email: originating.email ?? null,
       prefix: originating.prefix ?? null,
       shortName: originating.shortName ?? null,
+      processingDate: params.processingDate ?? null,
     },
   };
   return { rows, metadata: meta };
