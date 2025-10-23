@@ -139,7 +139,10 @@ export function generateValidEaziPayRow(
     amount: generateAmount(transactionCode),
   processingDate: req.originating?.processingDate ?? generateProcessingDate(transactionCode, dateFormat),
     empty: undefined,
-    sunName: faker.company.name().slice(0, 18),
+  // Ensure SUN Name does not contain commas or non-ASCII characters which would
+  // break the CSV (fields are not quoted). Reuse the same sanitiser used for
+  // account names.
+  sunName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     bacsReference: generatePaymentReference(),
     sunNumber: generateSunNumber(transactionCode),
   };
@@ -470,7 +473,9 @@ export function generateEaziPayRowsConstrained(params: {
   // Handle optional population of the SUN Number column per-row when requested.
   // Note: API callers must not request SUN number population (they'll call with includeSunNumber=false).
   const includeSun = !!params.includeSunNumber;
-  const suppliedSunName = params.originating?.sunName ? String(params.originating.sunName).slice(0, 18) : "";
+  const suppliedSunName = params.originating?.sunName
+    ? sanitizeAccountName(String(params.originating.sunName)).slice(0, 18)
+    : "";
   const suppliedSunNumberExact = params.originating?.sunNumber ? String(params.originating.sunNumber).trim() : null;
   for (let i = 0; i < rows.length; i++) {
     const tcode = String(rows[i][0]);
