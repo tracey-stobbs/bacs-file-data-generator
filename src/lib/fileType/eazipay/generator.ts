@@ -142,9 +142,10 @@ export function generateValidEaziPayRow(
   // Ensure SUN Name does not contain commas or non-ASCII characters which would
   // break the CSV (fields are not quoted). Reuse the same sanitiser used for
   // account names.
-  sunName: sanitizeAccountName(faker.company.name()).slice(0, 18),
+    sunName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     bacsReference: generatePaymentReference(),
-    sunNumber: generateSunNumber(transactionCode),
+    // Never include SUN number in generated CSVs (sensitive/externally-supplied)
+    sunNumber: "",
   };
 }
 export function generateInvalidEaziPayRow(
@@ -172,7 +173,6 @@ export function generateInvalidEaziPayRow(
     | "bacsReference"
   > = [
     "transactionCode",
-    "destinationSortCode",
     "destinationAccountNumber",
     "destinationAccountName",
     "bacsReference",
@@ -233,9 +233,8 @@ export function generateInvalidEaziPayRow(
         row.fixedZero = 0;
         break;
       case "sunNumber":
-        row.sunNumber = String(
-          generateInvalidFieldValue(fieldName, row.transactionCode)
-        );
+          // Intentionally leave sunNumber blank even for invalid rows
+          row.sunNumber = "";
         break;
     }
   }

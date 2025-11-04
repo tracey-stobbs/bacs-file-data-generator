@@ -29,6 +29,13 @@ function normalizeDateToIso(raw: string): string {
   const r = raw.trim();
   // Already ISO-like
   if (/^\d{4}-\d{2}-\d{2}$/.test(r)) return r;
+  // YYYYMMDD (e.g. 20251121)
+  if (/^\d{8}$/.test(r)) {
+    const yyyy = r.slice(0,4);
+    const mm = r.slice(4,6);
+    const dd = r.slice(6,8);
+    return `${yyyy}-${mm}-${dd}`;
+  }
   // DD/MM/YYYY
   const m = r.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) {
