@@ -12,7 +12,7 @@ export const Bacs18Validator = {
     return (
       typeof code === "string" &&
       (Bacs18Validator.allowedTransactionCodes as readonly string[]).includes(
-        code
+        code,
       )
     );
   },

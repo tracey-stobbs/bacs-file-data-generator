@@ -1,9 +1,11 @@
 # SDDirect File Format Documentation
 
 ## Overview
+
 The SDDirect file format is used for generating structured data files that comply with the specifications required for processing. This document outlines the structure, requirements, and validation rules for the SDDirect file format.
 
 ## Structure
+
 The SDDirect file consists of multiple sections, each containing specific fields that must be populated according to the defined schema. The primary sections include:
 
 1. **Header**
@@ -16,6 +18,7 @@ The SDDirect file consists of multiple sections, each containing specific fields
    - Provides summary information about the file, including the total number of records.
 
 ## Field Requirements
+
 Each field in the SDDirect file must meet the following criteria:
 
 - **Field Name**: The name of the field as defined in the schema.
@@ -24,6 +27,7 @@ Each field in the SDDirect file must meet the following criteria:
 - **Validation Rules**: Specific rules that the field data must satisfy (e.g., length, format).
 
 ## Validation
+
 The SDDirect file format includes validation rules to ensure data integrity. The following validations are performed:
 
 - **Field-Level Validation**: Each field is validated against its defined rules.
@@ -31,6 +35,7 @@ The SDDirect file format includes validation rules to ensure data integrity. The
 - **File-Level Validation**: The entire file is validated to ensure it meets the overall structure and requirements.
 
 ## Example
+
 An example of a valid SDDirect file structure is as follows:
 
 ```
@@ -48,4 +53,5 @@ TotalRecords: 2
 ```
 
 ## Conclusion
+
 The SDDirect file format is designed to facilitate the generation of structured data files while ensuring compliance with validation rules. Proper adherence to the structure and requirements outlined in this document is essential for successful file generation and processing.

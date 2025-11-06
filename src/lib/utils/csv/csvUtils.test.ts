@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { csvQuote, csvParse } from "../../src/lib/utils/csv/csvUtils.js";
+import { csvQuote, csvParse } from "./csvUtils.js";
 
 describe("csv utils", () => {
   it("round trips simple fields with quoting needs", () => {

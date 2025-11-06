@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { DateTime } from "luxon";
-import { generateProcessingDate } from "../../src/lib/fileType/eazipay/generator.js";
-import { AddWorkingDays } from "../../src/lib/utils/calendar.js";
+import { generateProcessingDate } from "./generator.js";
+import { AddWorkingDays } from "../../utils/calendar.js";
 
 describe("generateProcessingDate contra rules", () => {
   afterEach(() => {

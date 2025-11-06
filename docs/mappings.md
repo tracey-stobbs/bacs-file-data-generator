@@ -8,18 +8,18 @@ Canonical records are the internal representation that input parsers (CSV/XML/JS
 
 - id?: string | number
 - originating: {
-  - sortCode: string  // 6 digits
+  - sortCode: string // 6 digits
   - accountNumber: string // 8 digits (preferred)
   - accountName: string
   - sunNumber?: string
   - sunName?: string
-}
+    }
 - beneficiary: {
   - sortCode?: string
   - accountNumber?: string
   - accountName?: string
   - reference?: string
-}
+    }
 - amount: number // integer pence
 - currency?: string // default 'GBP'
 - processingDate?: string // ISO date or YYYY-MM-DD
@@ -84,6 +84,7 @@ Notes: these lengths and allowed characters were inferred from `docs/FileFormats
 - Use `xsd-types/` and `_docs/Bacss/` PDFs for exact widths. If XSDs are present for BACS XML variants, use those as source-of-truth.
 
 Examples (conceptual):
+
 - BACS:C-record -> beneficiary.accountName (trim/truncate to 18 or format-specific length)
 - BACS:D-record -> amount (pence) mapped into the numeric field for transaction value
 

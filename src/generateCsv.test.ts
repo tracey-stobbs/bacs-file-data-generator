@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateCsv } from "../../src/index.js";
+import { generateCsv } from "./index.js";
 
 describe("generateCsv API", () => {
   it("produces deterministic output with seed", () => {

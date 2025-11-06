@@ -7,9 +7,9 @@ export interface SunRecord {
 const demo: SunRecord[] = [
   {
     sun: 797154,
-    sortCode: '912291',
-    accountNumber: '51491194',
-    accountName: 'ClientA-ikhWQO',
+    sortCode: "912291",
+    accountNumber: "51491194",
+    accountName: "ClientA-ikhWQO",
   },
 ];
 export function findSun(sun: number): SunRecord {

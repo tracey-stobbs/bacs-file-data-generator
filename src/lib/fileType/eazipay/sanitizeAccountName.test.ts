@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sanitizeAccountName } from "../../src/lib/fileType/eazipay/generator.js";
+import { sanitizeAccountName } from "./generator.js";
 
 describe("sanitizeAccountName", () => {
   it("removes non-ASCII and control characters, quotes and commas", () => {

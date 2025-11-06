@@ -98,14 +98,14 @@ At any point, errors classified as `ERROR` abort the run in strict mode and cont
 Each generation run MUST produce a JSON summary at the end of the run (written next to outputs or to stdout if `--dryRun`) with the following shape:
 
 {
-  "timestamp": "2025-09-24T...Z",
-  "reportType": "EaziPay",
-  "inputFile": ".../INPUT.csv",
-  "processed": 15,
-  "generated": 15,
-  "errors": [ { recordId, code, message } ],
-  "warnings": [ { recordId, code, message } ],
-  "files": [ { path, checksum, size } ]
+"timestamp": "2025-09-24T...Z",
+"reportType": "EaziPay",
+"inputFile": ".../INPUT.csv",
+"processed": 15,
+"generated": 15,
+"errors": [ { recordId, code, message } ],
+"warnings": [ { recordId, code, message } ],
+"files": [ { path, checksum, size } ]
 }
 
 ## Tests to implement
