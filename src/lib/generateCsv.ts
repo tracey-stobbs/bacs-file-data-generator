@@ -1,5 +1,6 @@
 import { generateEaziPayRowsConstrainedWithMeta } from "./fileType/eazipay/index.js";
 import { csvQuote } from "./utils/csv/csvUtils.js";
+import { ensureSeeded } from "./utils/seed.js";
 import type { OriginatingAccountDetails } from "../types.js";
 
 export interface GenerateCsvOptions {
@@ -18,6 +19,8 @@ export function generateCsv(options: GenerateCsvOptions): {
   rows: string[][];
   csv: string;
 } {
+  // Ensure deterministic seed is applied before any faker usage during generation
+  ensureSeeded();
   type Row = string[];
   switch (options.reportType) {
     case "eazipay": {

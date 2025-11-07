@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 import fs from "fs";
 import { generateFile } from "../index.js";
+import { ensureSeeded } from "../lib/utils/seed.js";
 import type { GenerationRequest, OriginatingAccountDetails } from "../types.js";
 
 function printHelp(): void {
@@ -80,6 +81,9 @@ function parseArgs(argv: string[]): {
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv);
   if (opts.fakerSeed) process.env.FAKER_SEED = String(opts.fakerSeed);
+
+  // Apply seed early so any code that runs during generation is deterministic.
+  ensureSeeded();
 
   // Build a typed GenerationRequest. We validate fileType at runtime to narrow the union.
   if (!opts.fileType || opts.fileType !== "EaziPay") {

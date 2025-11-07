@@ -18,6 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "pretest": "npm run lint && npx prettier --check .",
     "test": "vitest",
     "lint": "eslint . --ext .ts",
     "generate-file": "node --loader ts-node/esm src/cli/generate.ts"
