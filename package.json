@@ -21,11 +21,14 @@
     "pretest": "npm run lint && npx prettier --check .",
     "test": "vitest",
     "lint": "eslint . --ext .ts",
-    "generate-file": "node --loader ts-node/esm src/cli/generate.ts"
+    "generate-file": "node --loader ts-node/esm src/cli/generate.ts",
+    "dev-server": "node --loader ts-node/esm server/http.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.0",
-    "luxon": "^3.5.0"
+    "luxon": "^3.5.0",
+    "fastify": "^4.28.0",
+    "pino": "^9.0.0"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
