@@ -14,6 +14,22 @@ describe("CLI integration smoke", () => {
     process.env.OUTPUT_ROOT = outRoot;
   });
 
+  beforeAll(() => {
+    // Build the project so we can spawn the compiled JS with a regular node process.
+    // This avoids ts-node/ESM loader compatibility issues when spawning child processes.
+    try {
+      execSync("npm run build", {
+        cwd: path.resolve(__dirname, "../../"),
+        stdio: "inherit",
+      });
+    } catch (err) {
+      // If build fails, let the test fail later when running the CLI
+      // but print the error for debugging.
+      // eslint-disable-next-line no-console
+      console.error("Build failed in beforeAll:", err);
+    }
+  });
+
   afterAll(() => {
     if (fs.existsSync(outRoot)) {
       fs.rmSync(outRoot, { recursive: true, force: true });
@@ -21,9 +37,10 @@ describe("CLI integration smoke", () => {
   });
 
   it("generates deterministically with faker seed", () => {
-    // Run CLI via node loader used by package script
+    // Run CLI in a spawned process using the ts-node ESM loader so we test the actual CLI process path
+    // Spawn the compiled CLI (dist) with node to avoid loader/ts-node issues.
     execSync(
-      "node --loader ts-node/esm src/cli/generate.ts --fileType=EaziPay --rows=5 --faker-seed=1234 --outputRoot=" +
+      "node dist/cli/generate.js --fileType=EaziPay --rows=5 --faker-seed=1234 --outputRoot=" +
         outRoot,
       {
         cwd: path.resolve(__dirname, "../../"),

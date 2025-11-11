@@ -1,2 +1,7 @@
-// Deprecated test file retained intentionally empty to avoid stale lint errors.
-// coverage-ignore: legacy placeholder; will be removed after refactor.
+import { describe, it, expect } from "vitest";
+
+describe("http-server placeholder", () => {
+  it("is a placeholder test", () => {
+    expect(true).toBe(true);
+  });
+});

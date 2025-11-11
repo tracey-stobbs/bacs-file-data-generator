@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node
 import fs from "fs";
-import { generateFile } from "../index.js";
+import path from "path";
 import { ensureSeeded } from "../lib/utils/seed.js";
 import type { GenerationRequest, OriginatingAccountDetails } from "../types.js";
 
@@ -101,15 +101,15 @@ async function main(): Promise<void> {
   };
 
   try {
-    const result = await generateFile(req);
-    console.log("Generated file:");
-    console.log(JSON.stringify(result, null, 2));
-    // Print created file content path and first few lines if available
-    if (result?.filePath && fs.existsSync(result.filePath)) {
-      const content = fs.readFileSync(result.filePath, "utf8");
-      console.log("\n--- file preview ---");
-      console.log(content.split(/\r?\n/).slice(0, 30).join("\n"));
-    }
+    await runCli({
+      fileType: req.fileType,
+      numberOfRows: req.numberOfRows,
+      fakerSeed: opts.fakerSeed,
+      outputRoot: opts.outputRoot,
+      originating: req.originating as unknown as
+        | Record<string, string>
+        | undefined,
+    });
   } catch (err: unknown) {
     // Narrow unknown to extract message if present
     const msg =
@@ -121,7 +121,78 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch((err) => {
-  console.error(err);
-  process.exit(99);
-});
+export type RunCliOptions = {
+  fileType: string;
+  numberOfRows?: number;
+  fakerSeed?: string | number;
+  outputRoot?: string;
+  originating?: Record<string, string>;
+};
+
+export async function runCli(
+  options: RunCliOptions,
+): Promise<{ filePath: string; rows: number }> {
+  if (options.fakerSeed) process.env.FAKER_SEED = String(options.fakerSeed);
+  ensureSeeded();
+
+  if (!options.fileType || options.fileType !== "EaziPay") {
+    throw new Error("Only EaziPay fileType is supported in this CLI");
+  }
+
+  // Dynamically import the compiled JS module (ts-node/esm resolver expects .js imports in source)
+  // When running under Vitest this import resolves to the TS source via ts-node hooks.
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = await import("../lib/generateCsv.js");
+  const gen = mod.generateCsv({
+    reportType: "eazipay",
+    numberOfRows: options.numberOfRows,
+    originating: options.originating as unknown as {
+      sortCode?: string;
+      accountNumber?: string;
+      accountName?: string;
+    },
+  });
+
+  const outRoot = options.outputRoot || "./output";
+  if (!fs.existsSync(outRoot)) fs.mkdirSync(outRoot, { recursive: true });
+  const filename = `${options.fileType.toLowerCase()}-${Date.now()}.csv`;
+  const filePath = path.resolve(outRoot, filename);
+  fs.writeFileSync(filePath, gen.csv, "utf8");
+  return { filePath, rows: gen.rows.length };
+}
+
+// Run main when executed as a script. Support both CommonJS and ESM entry checks so
+// the compiled `dist/cli/generate.js` (ESM) can be executed directly with `node`.
+async function runIfEntryPoint(): Promise<void> {
+  try {
+    // CJS style: try to access a global require (available in CommonJS environments)
+    try {
+      const maybeRequire = (globalThis as unknown as { require?: unknown })
+        .require;
+      if (typeof maybeRequire === "function") {
+        // Access require.main safely
+        const req: unknown = maybeRequire;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((req as any).main === module) {
+          await main();
+          return;
+        }
+      }
+    } catch {
+      // ignore - not a CJS environment
+    }
+
+    // ESM style: compare import.meta.url to the invoked script path
+    const { fileURLToPath } = await import("url");
+    if (fileURLToPath(import.meta.url) === process.argv[1]) {
+      await main();
+    }
+  } catch (err) {
+    // If anything goes wrong here, just surface the error and exit
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(99);
+  }
+}
+
+void runIfEntryPoint();
