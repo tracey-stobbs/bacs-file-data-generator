@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { generateFile } from "../lib/factory.js";
+import type { GenerationRequest } from "../types.js";
 
 // Programmatic smoke test: call generateFile directly under Vitest to avoid loader issues
 describe("CLI integration smoke", () => {
@@ -23,13 +24,13 @@ describe("CLI integration smoke", () => {
   it("generates deterministically with faker seed", async () => {
     process.env.FAKER_SEED = "1234";
 
-    const req = {
+    const req: GenerationRequest = {
       fileType: "EaziPay",
       numberOfRows: 5,
       hasInvalidRows: false,
-    } as const;
+    };
 
-    const result = await generateFile(req as any);
+    const result = await generateFile(req);
 
     expect(result).toBeTruthy();
     if (result.filePath) {
