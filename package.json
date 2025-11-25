@@ -22,7 +22,8 @@
     "test": "vitest -c ./vitest.config.ts",
     "lint": "eslint . --ext .ts",
     "generate-file": "node --loader ts-node/esm src/cli/generate.ts",
-    "dev-server": "node --loader ts-node/esm src/server.ts"
+    "dev-server": "node --loader ts-node/esm src/server.ts",
+    "start:generator": "node dist/server.js"
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.0",

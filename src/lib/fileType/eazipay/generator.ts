@@ -303,7 +303,9 @@ export const eaziPayAdapter = {
     return rows;
   },
   serialize(rows: string[][]): string {
-    return rows.map((r) => r.join(",")).join("\n");
+    // Ensure trailing newline so tools like `wc -l` report the correct number of rows.
+    const body = rows.map((r) => r.join(",")).join("\n");
+    return body.endsWith("\n") ? body : body + "\n";
   },
   previewMeta(
     rows: string[][],

@@ -36,15 +36,41 @@ If `seed` provided: sets `process.env.FAKER_SEED` and invokes `faker.seed(seed)`
 
 ## Running
 
+### Quick Start
+
+Development (TypeScript live):
+
 ```bash
 npm run dev-server # listens on port 3002 (override PORT env var if needed)
+```
+
+Production-style (built dist):
+
+```bash
+npm run build
+npm run start:generator
+```
+
+Generate deterministic sample:
+
+```bash
 curl -X POST http://localhost:3002/generate-file -H "Content-Type: application/json" \
   -d '{"fileType":"EaziPay","rows":5,"seed":1234}' -o eazipay.csv
 ```
 
+Validation: the resulting CSV now always ends with a trailing newline so `wc -l eazipay.csv` equals the requested row count.
+
 ## Future Expansion
 
-Planned fileTypes: BACS18, PaymentLines, SDDirect. Until implemented, they return 501. Façade service will orchestrate multiple calls in later milestones.
+Planned fileTypes: BACS18, PaymentLines, SDDirect. Until implemented, they return 501. The façade service (separate repo) can start both this generator and the report API concurrently. Example combined start (after building both):
+
+```bash
+pushd ../bacs-file-data-generator && npm run start:generator &
+pushd ../bacs-report-api && npm run start:report &
+wait
+```
+
+Use a process manager (e.g. `npm-run-all -p`) if you prefer a single aggregated script.
 
 ## Testing
 
