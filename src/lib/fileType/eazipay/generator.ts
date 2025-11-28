@@ -280,6 +280,8 @@ export const eaziPayAdapter = {
       sortCode?: string;
       accountNumber?: string;
       accountName?: string;
+      sunName?: string;
+      sunNumber?: string;
     };
     sun?: string;
   }): string[][] {
@@ -299,6 +301,19 @@ export const eaziPayAdapter = {
         ? generateInvalidEaziPayRow(internalReq, dateFormat)
         : generateValidEaziPayRow(internalReq, dateFormat);
       rows.push(formatEaziPayRowAsArray(rowData));
+    }
+    // If a SUN Name was supplied via originating, ensure it is applied to every
+    // generated row (column index 10). This mirrors the behaviour used by the
+    // constrained generator helpers so the HTTP `generate-file` path is
+    // consistent with programmatic callers.
+    const suppliedSunName = params.originating?.sunName
+      ? sanitizeAccountName(String(params.originating.sunName)).slice(0, 18)
+      : "";
+    if (suppliedSunName && suppliedSunName !== "") {
+      for (let i = 0; i < rows.length; i++) {
+        // Ensure the row has at least 11 columns
+        if (rows[i].length >= 11) rows[i][10] = suppliedSunName;
+      }
     }
     return rows;
   },

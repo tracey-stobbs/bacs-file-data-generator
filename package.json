@@ -27,18 +27,21 @@
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.0",
+    "@fastify/multipart": "9.3.0",
+    "fastify": "^5.6.2",
+    "lts": "^2.0.0",
     "luxon": "^3.5.0",
-    "fastify": "^4.28.0",
-    "pino": "^9.0.0"
+    "pino": "^9.0.0",
+    "xmlbuilder2": "4.0.1"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "vitest": "^1.6.0",
-    "@types/node": "^20.11.0",
     "@types/luxon": "^3.3.0",
-    "ts-node": "^10.9.1",
-    "eslint": "^8.57.0",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0"
+    "eslint": "^8.57.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.14"
   }
 }

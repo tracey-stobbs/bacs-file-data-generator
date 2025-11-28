@@ -39,6 +39,7 @@ function buildTestApp(): ReturnType<typeof Fastify> {
     const result = await generateFile({
       fileType: "EaziPay",
       numberOfRows: body.rows as number,
+      originating: body.originating as any,
     });
     void reply.header("Content-Type", "text/csv");
     await reply.send(result.fileContent);
@@ -92,5 +93,33 @@ describe("POST /generate-file (injected)", () => {
       payload: { fileType: "EaziPay", rows: 2, seed: 222 },
     });
     expect(a.body).not.toEqual(b.body);
+  });
+
+  it("applies originating.sunName to column 11", async (): Promise<void> => {
+    const app = buildTestApp();
+    const sunName = "SUN-C-0QZ5A";
+    const res = await app.inject({
+      method: "POST",
+      url: "/generate-file",
+      payload: {
+        fileType: "EaziPay",
+        rows: 3,
+        originating: {
+          sortCode: "912291",
+          accountNumber: "51491194",
+          accountName: "hOLDER-2W2",
+          sunNumber: "797154",
+          sunName,
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    const lines = String(res.body).split(/\r?\n/).filter((l) => l.length > 0);
+    expect(lines.length).toBe(3);
+    for (const line of lines) {
+      const fields = line.split(",");
+      expect(fields.length).toBeGreaterThanOrEqual(11);
+      expect(fields[10]).toBe(sunName);
+    }
   });
 });

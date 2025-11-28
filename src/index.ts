@@ -7,3 +7,4 @@ export * from "./lib/fileWriter/index.js";
 export * from "./lib/validators/index.js";
 export * from "./types.js";
 export * from "./lib/generateCsv.js";
+export type { GeneratorParams, GeneratorResult } from "./types.js";

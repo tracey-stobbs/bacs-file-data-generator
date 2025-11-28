@@ -75,3 +75,28 @@ export interface AdapterInterface<
   serialize(rows: string[][]): string;
   previewMeta(rows: string[][], req: TReq): PreviewMetadata;
 }
+
+// Types for API adapter interop (used by bacs-report-api)
+export type GeneratorParams = {
+  numberOfRows: number;
+  allowedTransactionCodes: string[];
+  includeSunNumber: boolean;
+  originating: {
+    sortCode: string;
+    accountNumber: string;
+    accountName: string;
+    sunNumber?: string;
+    sunName?: string;
+    clientName?: string;
+    email?: string;
+    prefix?: string;
+    shortName?: string;
+  };
+  dateFormat: string;
+  processingDate?: string;
+};
+
+export type GeneratorResult = {
+  rows: string[][];
+  metadata?: { originating?: Record<string, unknown>; [k: string]: unknown };
+};
