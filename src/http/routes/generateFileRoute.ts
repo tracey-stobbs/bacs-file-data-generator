@@ -76,6 +76,37 @@ function mapToGenerationRequest(
 export function registerGenerateFileRoute(app: FastifyInstance): void {
   app.post(
     "/generate-file",
+    {
+      schema: {
+        body: {
+          type: "object",
+          properties: {
+            fileType: { type: "string", enum: ["EaziPay"] },
+            rows: { type: "integer", minimum: 1 },
+            seed: { anyOf: [{ type: "integer" }, { type: "string", pattern: "^\\d+$" }] },
+            processingDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            originating: {
+              type: "object",
+              properties: {
+                sortCode: { type: "string" },
+                accountNumber: { type: "string" },
+                accountName: { type: "string" },
+              },
+              additionalProperties: true,
+            },
+            hasInvalidRows: { anyOf: [{ type: "boolean" }, { type: "string", enum: ["true", "false"] }] },
+          },
+          required: ["fileType", "rows"],
+          additionalProperties: true,
+        },
+        response: {
+          200: { type: "string" },
+          400: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
+          501: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
+          500: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
+        },
+      },
+    },
     async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
       const body = (req.body as BodySchema) || {};
       const mapped = mapToGenerationRequest(body);

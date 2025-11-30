@@ -32,7 +32,11 @@ export function generateCsv(options: GenerateCsvOptions): {
       if (!originating.sunName) originating.sunName = "Local Generated";
       const result = generateEaziPayRowsConstrainedWithMeta({
         numberOfRows: options.numberOfRows,
-        allowedTransactionCodes: options.allowedTransactionCodes,
+        // Generator requires a non-empty array; default to validator's allowed set when not provided.
+        allowedTransactionCodes:
+          (options.allowedTransactionCodes && options.allowedTransactionCodes.length > 0)
+            ? options.allowedTransactionCodes
+            : ["01", "17", "18", "0C", "0N", "0S", "99"],
         dateFormat: options.dateFormat,
         originating,
       });

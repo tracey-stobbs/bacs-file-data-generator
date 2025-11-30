@@ -3,19 +3,21 @@ import pino from "pino";
 import { registerGenerateFileRoute } from "./http/routes/generateFileRoute.js";
 
 const logger = pino({ level: process.env.DEBUG ? "debug" : "info" });
-const app = Fastify({ logger: false });
+// Adopt Fastify v5 loggerInstance pattern for unified logging
+const app = Fastify({ loggerInstance: logger });
 
-registerGenerateFileRoute(app);
+// Cast to any to bridge Fastify v5 logger type differences in generic signatures
+registerGenerateFileRoute(app as any);
 
-app.get("/health", async () => ({ status: "ok" }));
+app.get("/health", { schema: { response: { 200: { type: "object", properties: { status: { type: "string" } }, required: ["status"] } } } }, async () => ({ status: "ok" }));
 
 async function start(): Promise<void> {
   const port = Number(process.env.PORT || 3002);
   try {
     await app.listen({ port, host: "0.0.0.0" });
-    logger.info({ event: "listening", port }, "Generator HTTP listening");
+    app.log.info({ event: "listening", port }, "Generator HTTP listening");
   } catch (err) {
-    logger.error({ err }, "Startup failure");
+    app.log.error({ err }, "Startup failure");
     process.exit(1);
   }
 }

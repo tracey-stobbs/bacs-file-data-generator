@@ -439,7 +439,7 @@ export function previewRows(
  */
 export function generateEaziPayRowsConstrained(params: {
   numberOfRows?: number;
-  allowedTransactionCodes?: string[];
+  allowedTransactionCodes: string[]; // mandatory at generator boundary
   dateFormat?: string;
   originating?: {
     sortCode?: string;
@@ -464,9 +464,9 @@ export function generateEaziPayRowsConstrained(params: {
   const rows: string[][] = [];
   const count = params.numberOfRows ?? 10;
   const allowed =
-    params.allowedTransactionCodes && params.allowedTransactionCodes.length > 0
+    Array.isArray(params.allowedTransactionCodes) && params.allowedTransactionCodes.length > 0
       ? params.allowedTransactionCodes
-      : (EaziPayValidator.allowedTransactionCodes as readonly string[]);
+      : (() => { throw new Error("allowedTransactionCodes must be provided to generator and be non-empty"); })();
   const req = { originating: params.originating };
   // SUN Name is required for EaziPay generation. Fail fast if it's not supplied.
   // Ensure we have a sunName for internal generation. Callers are encouraged to supply one;
@@ -561,7 +561,7 @@ export function generateEaziPayRowsConstrained(params: {
  */
 export function generateEaziPayRowsConstrainedWithMeta(params: {
   numberOfRows?: number;
-  allowedTransactionCodes?: string[];
+  allowedTransactionCodes: string[]; // mandatory
   dateFormat?: string;
   originating?: {
     sortCode?: string;
