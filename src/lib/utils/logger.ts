@@ -5,13 +5,13 @@ export interface Logger {
 }
 class ConsoleLogger implements Logger {
   info(msg: unknown): void {
-    console.log("[info]", msg);
+    console.log('[info]', msg);
   }
   error(msg: unknown): void {
-    console.error("[error]", msg);
+    console.error('[error]', msg);
   }
   debug(msg: unknown): void {
-    if (process.env.DEBUG) console.debug("[debug]", msg);
+    if (process.env.DEBUG) console.debug('[debug]', msg);
   }
 }
 export const logger: Logger = new ConsoleLogger();

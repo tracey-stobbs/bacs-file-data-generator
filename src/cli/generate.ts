@@ -1,31 +1,31 @@
 #!/usr/bin/env ts-node
-import fs from "fs";
-import path from "path";
-import { ensureSeeded } from "../lib/utils/seed.js";
-import type { GenerationRequest, OriginatingAccountDetails } from "../types.js";
+import fs from 'fs';
+import path from 'path';
+import { ensureSeeded } from '../lib/utils/seed.js';
+import type { GenerationRequest, OriginatingAccountDetails } from '../types.js';
 
 function printHelp(): void {
   console.log(
     [
-      "BACS File Data Generator CLI",
-      "",
-      "Usage:",
-      "  ts-node src/cli/generate.ts --fileType <EaziPay|SDDirect|Bacs18> [options]",
-      "",
-      "Options:",
-      "  --fileType=<name>           File type to generate (EaziPay currently supported)",
-      "  --rows=<n>                  Number of rows to generate (default 10)",
-      "  --invalid                   Include invalid rows (default false)",
-      "  --faker-seed=<seed>         Seed for faker to make output deterministic",
-      "  --outputRoot=<path>         Output directory (default ./output)",
-      "  --originating.sortCode=<NNNNNN>    Override originating.sortCode",
-      "  --originating.accountNumber=<NNNNNNNN>  Override originating.accountNumber",
-      "  --originating.accountName=<name>   Override originating.accountName",
-      "  --help, -h                  Show this help",
-      "",
-      "Examples:",
-      "  npx ts-node src/cli/generate.ts --fileType=EaziPay --rows=10 --faker-seed=1234",
-    ].join("\n"),
+      'BACS File Data Generator CLI',
+      '',
+      'Usage:',
+      '  ts-node src/cli/generate.ts --fileType <EaziPay|SDDirect|Bacs18> [options]',
+      '',
+      'Options:',
+      '  --fileType=<name>           File type to generate (EaziPay currently supported)',
+      '  --rows=<n>                  Number of rows to generate (default 10)',
+      '  --invalid                   Include invalid rows (default false)',
+      '  --faker-seed=<seed>         Seed for faker to make output deterministic',
+      '  --outputRoot=<path>         Output directory (default ./output)',
+      '  --originating.sortCode=<NNNNNN>    Override originating.sortCode',
+      '  --originating.accountNumber=<NNNNNNNN>  Override originating.accountNumber',
+      '  --originating.accountName=<name>   Override originating.accountName',
+      '  --help, -h                  Show this help',
+      '',
+      'Examples:',
+      '  npx ts-node src/cli/generate.ts --fileType=EaziPay --rows=10 --faker-seed=1234',
+    ].join('\n')
   );
 }
 
@@ -44,27 +44,26 @@ function parseArgs(argv: string[]): {
     fakerSeed?: string | number;
     outputRoot: string;
     originating?: Record<string, string>;
-  } = { numberOfRows: 10, outputRoot: "./output" };
+  } = { numberOfRows: 10, outputRoot: './output' };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
-    if (a === "--help" || a === "-h") {
+    if (a === '--help' || a === '-h') {
       printHelp();
       process.exit(0);
     }
-    if (a.startsWith("--fileType=")) opts.fileType = a.split("=")[1];
-    else if (a.startsWith("--rows="))
-      opts.numberOfRows = Number(a.split("=")[1]);
-    else if (a === "--invalid") opts.hasInvalidRows = true;
-    else if (a.startsWith("--faker-seed=")) opts.fakerSeed = a.split("=")[1];
-    else if (a.startsWith("--outputRoot=")) opts.outputRoot = a.split("=")[1];
-    else if (a.startsWith("--originating.")) {
-      const [k, v] = a.substring("--originating.".length).split("=");
+    if (a.startsWith('--fileType=')) opts.fileType = a.split('=')[1];
+    else if (a.startsWith('--rows=')) opts.numberOfRows = Number(a.split('=')[1]);
+    else if (a === '--invalid') opts.hasInvalidRows = true;
+    else if (a.startsWith('--faker-seed=')) opts.fakerSeed = a.split('=')[1];
+    else if (a.startsWith('--outputRoot=')) opts.outputRoot = a.split('=')[1];
+    else if (a.startsWith('--originating.')) {
+      const [k, v] = a.substring('--originating.'.length).split('=');
       if (!opts.originating) opts.originating = {};
       opts.originating[k] = v;
     }
   }
   if (!opts.fileType) {
-    console.error("Missing --fileType");
+    console.error('Missing --fileType');
     printHelp();
     process.exit(1);
   }
@@ -86,17 +85,16 @@ async function main(): Promise<void> {
   ensureSeeded();
 
   // Build a typed GenerationRequest. We validate fileType at runtime to narrow the union.
-  if (!opts.fileType || opts.fileType !== "EaziPay") {
-    console.error("Only EaziPay fileType is supported in this CLI");
+  if (!opts.fileType || opts.fileType !== 'EaziPay') {
+    console.error('Only EaziPay fileType is supported in this CLI');
     process.exit(1);
   }
 
   const req: GenerationRequest = {
-    fileType: "EaziPay",
+    fileType: 'EaziPay',
     numberOfRows: opts.numberOfRows,
     hasInvalidRows: !!opts.hasInvalidRows,
-    originating:
-      (opts.originating as unknown as OriginatingAccountDetails) || undefined,
+    originating: (opts.originating as unknown as OriginatingAccountDetails) || undefined,
     // outputRoot is not part of GenerationRequest but generators accept it via options in some codepaths; keep as workaround if needed
   };
 
@@ -106,17 +104,15 @@ async function main(): Promise<void> {
       numberOfRows: req.numberOfRows,
       fakerSeed: opts.fakerSeed,
       outputRoot: opts.outputRoot,
-      originating: req.originating as unknown as
-        | Record<string, string>
-        | undefined,
+      originating: req.originating as unknown as Record<string, string> | undefined,
     });
   } catch (err: unknown) {
     // Narrow unknown to extract message if present
     const msg =
-      typeof err === "object" && err !== null && "message" in err
+      typeof err === 'object' && err !== null && 'message' in err
         ? String((err as { message?: unknown }).message)
         : String(err);
-    console.error("Generation failed:", msg);
+    console.error('Generation failed:', msg);
     process.exit(2);
   }
 }
@@ -129,22 +125,20 @@ export type RunCliOptions = {
   originating?: Record<string, string>;
 };
 
-export async function runCli(
-  options: RunCliOptions,
-): Promise<{ filePath: string; rows: number }> {
+export async function runCli(options: RunCliOptions): Promise<{ filePath: string; rows: number }> {
   if (options.fakerSeed) process.env.FAKER_SEED = String(options.fakerSeed);
   ensureSeeded();
 
-  if (!options.fileType || options.fileType !== "EaziPay") {
-    throw new Error("Only EaziPay fileType is supported in this CLI");
+  if (!options.fileType || options.fileType !== 'EaziPay') {
+    throw new Error('Only EaziPay fileType is supported in this CLI');
   }
 
   // Dynamically import the compiled JS module (ts-node/esm resolver expects .js imports in source)
   // When running under Vitest this import resolves to the TS source via ts-node hooks.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = await import("../lib/generateCsv.js");
+  const mod = await import('../lib/generateCsv.js');
   const gen = mod.generateCsv({
-    reportType: "eazipay",
+    reportType: 'eazipay',
     numberOfRows: options.numberOfRows,
     originating: options.originating as unknown as {
       sortCode?: string;
@@ -153,11 +147,11 @@ export async function runCli(
     },
   });
 
-  const outRoot = options.outputRoot || "./output";
+  const outRoot = options.outputRoot || './output';
   if (!fs.existsSync(outRoot)) fs.mkdirSync(outRoot, { recursive: true });
   const filename = `${options.fileType.toLowerCase()}-${Date.now()}.csv`;
   const filePath = path.resolve(outRoot, filename);
-  fs.writeFileSync(filePath, gen.csv, "utf8");
+  fs.writeFileSync(filePath, gen.csv, 'utf8');
   return { filePath, rows: gen.rows.length };
 }
 
@@ -167,9 +161,8 @@ async function runIfEntryPoint(): Promise<void> {
   try {
     // CJS style: try to access a global require (available in CommonJS environments)
     try {
-      const maybeRequire = (globalThis as unknown as { require?: unknown })
-        .require;
-      if (typeof maybeRequire === "function") {
+      const maybeRequire = (globalThis as unknown as { require?: unknown }).require;
+      if (typeof maybeRequire === 'function') {
         // Access require.main safely
         const req: unknown = maybeRequire;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,7 +176,7 @@ async function runIfEntryPoint(): Promise<void> {
     }
 
     // ESM style: compare import.meta.url to the invoked script path
-    const { fileURLToPath } = await import("url");
+    const { fileURLToPath } = await import('url');
     if (fileURLToPath(import.meta.url) === process.argv[1]) {
       await main();
     }

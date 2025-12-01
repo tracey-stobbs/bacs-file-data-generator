@@ -4,5 +4,5 @@ export {
   generateValidBacs18Row,
   generateInvalidBacs18Row,
   formatBacs18Row,
-} from "./generator.js";
-export * from "./types.js";
+} from './generator.js';
+export * from './types.js';

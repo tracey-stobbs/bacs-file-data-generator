@@ -1,13 +1,6 @@
 // Domain type definitions for generation & preview API (replaces legacy generic placeholders)
-export type SupportedFileType = "EaziPay";
-export type CommonTransactionCode =
-  | "01"
-  | "17"
-  | "18"
-  | "99"
-  | "0C"
-  | "0N"
-  | "0S";
+export type SupportedFileType = 'EaziPay';
+export type CommonTransactionCode = '01' | '17' | '18' | '99' | '0C' | '0N' | '0S';
 
 export interface BaseGenerationRequest {
   fileType: SupportedFileType;
@@ -23,7 +16,7 @@ export interface OriginatingAccountDetails {
 }
 
 export interface EaziPayGenerationRequest extends BaseGenerationRequest {
-  fileType: "EaziPay";
+  fileType: 'EaziPay';
   dateFormat?: string; // One of EaziPayDateFormat; kept string to avoid circular import here.
   originating?: OriginatingAccountDetails;
 }
@@ -54,7 +47,7 @@ export interface PreviewMetadata {
   rows?: number;
   columns?: number;
   header?: string; // e.g. NH/H
-  validity?: "I" | "V";
+  validity?: 'I' | 'V';
   sun?: string;
 }
 
@@ -68,9 +61,7 @@ export interface RowBuildResult {
   row: { fields: string[]; asLine: string };
 }
 
-export interface AdapterInterface<
-  TReq extends BaseGenerationRequest = BaseGenerationRequest,
-> {
+export interface AdapterInterface<TReq extends BaseGenerationRequest = BaseGenerationRequest> {
   buildPreviewRows(req: TReq): string[][];
   serialize(rows: string[][]): string;
   previewMeta(rows: string[][], req: TReq): PreviewMetadata;

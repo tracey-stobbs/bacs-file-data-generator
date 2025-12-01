@@ -7,16 +7,16 @@
 export function csvQuote(fields: string[]): string {
   return fields
     .map((f) => {
-      if (f === "") return f; // keep empty bare
+      if (f === '') return f; // keep empty bare
       if (/[",\n]/.test(f)) return '"' + f.replace(/"/g, '""') + '"';
       return f;
     })
-    .join(",");
+    .join(',');
 }
 
 export function csvParse(line: string): string[] {
   const out: string[] = [];
-  let cur = "";
+  let cur = '';
   let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
@@ -36,9 +36,9 @@ export function csvParse(line: string): string[] {
         inQuotes = true;
         continue;
       }
-      if (ch === ",") {
+      if (ch === ',') {
         out.push(cur);
-        cur = "";
+        cur = '';
         continue;
       }
       cur += ch;

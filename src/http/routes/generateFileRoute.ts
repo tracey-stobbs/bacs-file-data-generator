@@ -1,8 +1,8 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { generateFile } from "../../lib/factory.js";
-import { faker } from "@faker-js/faker";
-import type { GenerationRequest } from "../../types.js";
-import { DateTime } from "luxon";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { generateFile } from '../../lib/factory.js';
+import { faker } from '@faker-js/faker';
+import type { GenerationRequest } from '../../types.js';
+import { DateTime } from 'luxon';
 
 interface BodySchema {
   fileType?: string;
@@ -20,106 +20,96 @@ interface BodySchema {
 type ValidationError = { error: string; detail?: Record<string, unknown> };
 
 function isPositiveInt(val: unknown): val is number {
-  return typeof val === "number" && Number.isInteger(val) && val > 0;
+  return typeof val === 'number' && Number.isInteger(val) && val > 0;
 }
 
 function parseSeed(val: unknown): number | undefined | ValidationError {
   if (val == null) return undefined;
-  if (typeof val === "number" && Number.isInteger(val)) return val;
-  if (typeof val === "string" && /^\d+$/.test(val)) return Number(val);
-  return { error: "INVALID_SEED", detail: { provided: val } };
+  if (typeof val === 'number' && Number.isInteger(val)) return val;
+  if (typeof val === 'string' && /^\d+$/.test(val)) return Number(val);
+  return { error: 'INVALID_SEED', detail: { provided: val } };
 }
 
-function validateProcessingDate(
-  val: unknown,
-): string | undefined | ValidationError {
+function validateProcessingDate(val: unknown): string | undefined | ValidationError {
   if (val == null) return undefined;
-  if (typeof val !== "string")
-    return { error: "INVALID_PROCESSING_DATE_TYPE", detail: { provided: val } };
-  const dt = DateTime.fromISO(val, { zone: "utc" });
+  if (typeof val !== 'string')
+    return { error: 'INVALID_PROCESSING_DATE_TYPE', detail: { provided: val } };
+  const dt = DateTime.fromISO(val, { zone: 'utc' });
   if (!dt.isValid)
     return {
-      error: "INVALID_PROCESSING_DATE_FORMAT",
+      error: 'INVALID_PROCESSING_DATE_FORMAT',
       detail: { provided: val },
     };
   return dt.toISODate();
 }
 
-function mapToGenerationRequest(
-  body: BodySchema,
-): GenerationRequest | ValidationError {
-  if (body.fileType !== "EaziPay")
+function mapToGenerationRequest(body: BodySchema): GenerationRequest | ValidationError {
+  if (body.fileType !== 'EaziPay')
     return {
-      error: "UNSUPPORTED_FILE_TYPE",
+      error: 'UNSUPPORTED_FILE_TYPE',
       detail: { fileType: body.fileType },
     };
-  if (!isPositiveInt(body.rows))
-    return { error: "INVALID_ROWS", detail: { rows: body.rows } };
+  if (!isPositiveInt(body.rows)) return { error: 'INVALID_ROWS', detail: { rows: body.rows } };
   const seedParsed = parseSeed(body.seed);
-  if (typeof seedParsed === "object" && "error" in seedParsed)
-    return seedParsed;
+  if (typeof seedParsed === 'object' && 'error' in seedParsed) return seedParsed;
   const processingDateParsed = validateProcessingDate(body.processingDate);
-  if (
-    typeof processingDateParsed === "object" &&
-    "error" in processingDateParsed
-  )
+  if (typeof processingDateParsed === 'object' && 'error' in processingDateParsed)
     return processingDateParsed;
   return {
-    fileType: "EaziPay",
+    fileType: 'EaziPay',
     numberOfRows: body.rows as number,
-    hasInvalidRows:
-      body.hasInvalidRows === true || body.hasInvalidRows === "true",
+    hasInvalidRows: body.hasInvalidRows === true || body.hasInvalidRows === 'true',
     originating: body.originating,
   };
 }
 
 export function registerGenerateFileRoute(app: FastifyInstance): void {
   app.post(
-    "/generate-file",
+    '/generate-file',
     {
       schema: {
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            fileType: { type: "string", enum: ["EaziPay"] },
-            rows: { type: "integer", minimum: 1 },
-            seed: { anyOf: [{ type: "integer" }, { type: "string", pattern: "^\\d+$" }] },
-            processingDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+            fileType: { type: 'string', enum: ['EaziPay'] },
+            rows: { type: 'integer', minimum: 1 },
+            seed: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            processingDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
             originating: {
-              type: "object",
+              type: 'object',
               properties: {
-                sortCode: { type: "string" },
-                accountNumber: { type: "string" },
-                accountName: { type: "string" },
+                sortCode: { type: 'string' },
+                accountNumber: { type: 'string' },
+                accountName: { type: 'string' },
               },
               additionalProperties: true,
             },
-            hasInvalidRows: { anyOf: [{ type: "boolean" }, { type: "string", enum: ["true", "false"] }] },
+            hasInvalidRows: {
+              anyOf: [{ type: 'boolean' }, { type: 'string', enum: ['true', 'false'] }],
+            },
           },
-          required: ["fileType", "rows"],
+          required: ['fileType', 'rows'],
           additionalProperties: true,
         },
         response: {
-          200: { type: "string" },
-          400: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
-          501: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
-          500: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
+          200: { type: 'string' },
+          400: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          501: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          500: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
         },
       },
     },
     async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
       const body = (req.body as BodySchema) || {};
       const mapped = mapToGenerationRequest(body);
-      if ("error" in mapped) {
-        await reply
-          .status(mapped.error === "UNSUPPORTED_FILE_TYPE" ? 501 : 400)
-          .send(mapped);
+      if ('error' in mapped) {
+        await reply.status(mapped.error === 'UNSUPPORTED_FILE_TYPE' ? 501 : 400).send(mapped);
         return;
       }
       // Deterministic seeding
       if (body.seed != null) {
         const parsed = parseSeed(body.seed);
-        if (typeof parsed === "object") {
+        if (typeof parsed === 'object') {
           await reply.status(400).send(parsed);
           return;
         }
@@ -134,15 +124,15 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
       }
       try {
         const result = await generateFile(mapped);
-        void reply.header("Content-Type", "text/csv");
+        void reply.header('Content-Type', 'text/csv');
         void reply.header(
-          "Content-Disposition",
-          `attachment; filename="${mapped.fileType}-${Date.now()}.csv"`,
+          'Content-Disposition',
+          `attachment; filename="${mapped.fileType}-${Date.now()}.csv"`
         );
         await reply.send(result.fileContent);
       } catch (err) {
-        await reply.status(500).send({ error: "GENERATION_FAILED" });
+        await reply.status(500).send({ error: 'GENERATION_FAILED' });
       }
-    },
+    }
   );
 }

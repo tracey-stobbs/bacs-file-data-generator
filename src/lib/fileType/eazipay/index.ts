@@ -7,5 +7,5 @@ export {
   formatEaziPayRowAsArray,
   generateEaziPayRowsConstrained,
   generateEaziPayRowsConstrainedWithMeta,
-} from "./generator.js";
-export * from "./types.js";
+} from './generator.js';
+export * from './types.js';

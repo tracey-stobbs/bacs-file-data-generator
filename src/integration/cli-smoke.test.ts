@@ -1,11 +1,11 @@
-import fs from "fs";
-import path from "path";
-import { generateFile } from "../lib/factory.js";
-import type { GenerationRequest } from "../types.js";
+import fs from 'fs';
+import path from 'path';
+import { generateFile } from '../lib/factory.js';
+import type { GenerationRequest } from '../types.js';
 
 // Programmatic smoke test: call generateFile directly under Vitest to avoid loader issues
-describe("CLI integration smoke", () => {
-  const outRoot = path.resolve(__dirname, "../../output/test-cli-smoke");
+describe('CLI integration smoke', () => {
+  const outRoot = path.resolve(__dirname, '../../output/test-cli-smoke');
 
   beforeAll(() => {
     // Ensure clean
@@ -21,11 +21,11 @@ describe("CLI integration smoke", () => {
     }
   });
 
-  it("generates deterministically with faker seed", async () => {
-    process.env.FAKER_SEED = "1234";
+  it('generates deterministically with faker seed', async () => {
+    process.env.FAKER_SEED = '1234';
 
     const req: GenerationRequest = {
-      fileType: "EaziPay",
+      fileType: 'EaziPay',
       numberOfRows: 5,
       hasInvalidRows: false,
     };
@@ -35,7 +35,7 @@ describe("CLI integration smoke", () => {
     expect(result).toBeTruthy();
     if (result.filePath) {
       expect(fs.existsSync(result.filePath)).toBe(true);
-      const content = fs.readFileSync(result.filePath, "utf8");
+      const content = fs.readFileSync(result.filePath, 'utf8');
       expect(content.length).toBeGreaterThan(10);
     }
   }, 20000);

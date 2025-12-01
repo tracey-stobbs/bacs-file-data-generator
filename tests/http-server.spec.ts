@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from 'vitest';
 
-describe("http-server placeholder", () => {
-  it("is a placeholder test", () => {
+describe('http-server placeholder', () => {
+  it('is a placeholder test', () => {
     expect(true).toBe(true);
   });
 });
