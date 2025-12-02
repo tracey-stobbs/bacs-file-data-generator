@@ -3,6 +3,8 @@ import { DateTime } from 'luxon';
 import { SDDirectValidator } from '../../validators/sddirectValidator.js';
 import type { DeterminismContext } from '../../determinism/context.js';
 import { AddWorkingDays } from '../../utils/calendar.js';
+import { nodeFs, safeJoinOutput } from '../../utils/fsWrapper.js';
+import type { OriginatingAccountDetails } from '../../../types.js';
 
 export interface SDDirectRowBase {
   destinationAccountName: string;
@@ -70,4 +72,69 @@ function formatPayDate(code: string, ctx?: DeterminismContext): string {
   const base = ctx?.now ? DateTime.fromMillis(ctx.now()) : DateTime.now();
   const dt = AddWorkingDays(base, days);
   return dt.toFormat('yyyyLLdd');
+}
+
+export function previewRows(
+  req: {
+    numberOfRows: number;
+    fileType: 'SDDirect';
+    hasInvalidRows?: boolean;
+    includeOptionalFields?: boolean;
+    originating?: OriginatingAccountDetails;
+    sun?: string;
+  },
+  invalid: boolean,
+  ctx?: DeterminismContext
+): { headers: { name: string; value: number }[]; rows: { fields: { value: string; order: number }[] }[]; metadata: { fileType: 'SDDirect'; sun?: string } } {
+  const headers = [
+    'Destination Account Name',
+    'Destination Sort Code',
+    'Destination Account Number',
+    'Payment Reference',
+    'Amount',
+    'Transaction Code',
+    'Realtime Information Checksum',
+    'Pay Date',
+  ];
+  const rows = Array.from({ length: req.numberOfRows }, (_, idx) => {
+    const row = invalid && idx > 0 ? generateInvalidRow(!!req.includeOptionalFields, ctx) : generateValidRow(!!req.includeOptionalFields, ctx);
+    const asArray: string[] = [
+      row.destinationAccountName,
+      row.destinationSortCode,
+      row.destinationAccountNumber,
+      row.paymentReference,
+      row.amount,
+      row.transactionCode,
+      'realtimeInformationChecksum' in row ? row.realtimeInformationChecksum : '',
+      'payDate' in row ? row.payDate : '',
+    ];
+    return { fields: headers.map((_, i) => ({ value: asArray[i], order: i })) };
+  });
+  return {
+    headers: headers.map((h, i) => ({ name: h, value: i })),
+    rows,
+    metadata: { fileType: 'SDDirect', sun: req.sun },
+  };
+}
+
+export async function generateFile(
+  req: {
+    numberOfRows: number;
+    fileType: 'SDDirect';
+    hasInvalidRows?: boolean;
+    includeOptionalFields?: boolean;
+    originating?: OriginatingAccountDetails;
+    sun?: string;
+  },
+  opts?: { determinism?: DeterminismContext }
+): Promise<{ filePath: string; fileContent: string }> {
+  const validityFlag = req.hasInvalidRows ? 'I' : 'V';
+  const nowMillis = opts?.determinism?.now ? opts.determinism.now() : Date.now();
+  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyyLLdd_HHmmss');
+  const fileName = `SDDirect_${req.numberOfRows}_${validityFlag}_${ts}.csv`;
+  const rel = safeJoinOutput('SDDirect', req.sun ?? 'DEFAULT', fileName);
+  const preview = previewRows(req, !!req.hasInvalidRows, opts?.determinism);
+  const content = preview.rows.map((r) => r.fields.map((f) => f.value).join(',')).join('\n') + '\n';
+  await nodeFs.writeTextFile(rel, content);
+  return { filePath: rel, fileContent: content };
 }

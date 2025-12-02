@@ -30,10 +30,20 @@ describe('factory', () => {
     expect(typeof res.fileContent).toBe('string');
   });
 
+  it('routes SDDirect previewRows', async () => {
+    const res = await previewRows({ fileType: 'SDDirect', numberOfRows: 1 } as any);
+    expect(res.headers.length).toBeGreaterThan(0);
+  });
+
+  it('routes SDDirect generateFile', async () => {
+    const res = await generateFile({ fileType: 'SDDirect', numberOfRows: 2 } as any);
+    expect(typeof res.fileContent).toBe('string');
+  });
+
   it('throws for unsupported file type', async () => {
     await expect(
       // @ts-expect-error forcing unsupported type for test
-      generateFile({ fileType: 'SDDirect', numberOfRows: 1 })
+      generateFile({ fileType: 'UnknownType', numberOfRows: 1 })
     ).rejects.toHaveProperty('code', 'UNSUPPORTED_FILE_TYPE');
   });
 });

@@ -21,6 +21,10 @@ export async function generateFile(
       const mod = await import('./fileType/eazipay/generator.js');
       return mod.generateFile(req, { determinism: ctx });
     }
+    case 'SDDirect': {
+      const mod = await import('./fileType/sddirect/index.js');
+      return mod.generateSDDirectFile(req as any, { determinism: ctx });
+    }
     case 'Bacs18PaymentLines': {
       const mod = await import('./fileType/bacs18PaymentLines/index.js');
       return mod.generateBacs18File(req as Bacs18GenerationRequest, { determinism: ctx });
@@ -38,6 +42,10 @@ export async function previewRows(req: GenerationRequest): Promise<PreviewResult
     case 'EaziPay': {
       const mod = await import('./fileType/eazipay/generator.js');
       return mod.previewRows(req as EaziPayGenerationRequest, !!req.hasInvalidRows);
+    }
+    case 'SDDirect': {
+      const mod = await import('./fileType/sddirect/index.js');
+      return mod.previewSDDirectRows(req as any, !!req.hasInvalidRows);
     }
     case 'Bacs18PaymentLines': {
       const mod = await import('./fileType/bacs18PaymentLines/index.js');
