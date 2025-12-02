@@ -346,7 +346,8 @@ export const eaziPayAdapter = {
     return { rows };
   },
 } as const;
-export async function generateFile(req: {
+export async function generateFile(
+  req: {
   numberOfRows?: number;
   dateFormat?: string;
   hasInvalidRows?: boolean;
@@ -356,7 +357,9 @@ export async function generateFile(req: {
     accountName?: string;
   };
   sun?: string;
-}): Promise<{ filePath: string; fileContent: string }> {
+},
+  opts?: { determinism?: { rng: () => number; now: () => number } }
+): Promise<{ filePath: string; fileContent: string }> {
   const rows = eaziPayAdapter.buildPreviewRows(req);
   const serialized = eaziPayAdapter.serialize(rows);
   const wrapper = {
@@ -367,7 +370,9 @@ export async function generateFile(req: {
     hasInvalidRows: req.hasInvalidRows,
   };
   const fsMod: { nodeFs: FileSystem } = await import('../../utils/fsWrapper.js');
-  return generateFileWithFs(wrapper, fsMod.nodeFs, req.sun || 'DEFAULT');
+  return generateFileWithFs(wrapper, fsMod.nodeFs, req.sun || 'DEFAULT', {
+    determinism: opts?.determinism,
+  });
 }
 export function previewRows(req: EaziPayGenerationRequest, _invalid: boolean): PreviewResult {
   // touch the second param so lint doesn't complain while keeping signature consistent with other generators

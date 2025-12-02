@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { DateTime } from 'luxon';
 import { SDDirectValidator } from '../../validators/sddirectValidator.js';
+import type { DeterminismContext } from '../../determinism/context.js';
 import { AddWorkingDays } from '../../utils/calendar.js';
 
 export interface SDDirectRowBase {
@@ -17,8 +18,8 @@ export interface SDDirectRowOptional extends SDDirectRowBase {
 }
 export type SDDirectRow = SDDirectRowBase | SDDirectRowOptional;
 
-export function generateValidRow(includeOptionalFields: boolean | string[]): SDDirectRow {
-  const code = pickSDDirectCode();
+export function generateValidRow(includeOptionalFields: boolean | string[], ctx?: DeterminismContext): SDDirectRow {
+  const code = pickSDDirectCode(ctx);
   const isContra = SDDirectValidator.isContraCode(code);
   const base: SDDirectRowBase = {
     destinationAccountName: allowedName(),
@@ -29,7 +30,7 @@ export function generateValidRow(includeOptionalFields: boolean | string[]): SDD
     transactionCode: code,
   };
   if (includeOptionalFields === true) {
-    const payDate = formatPayDate(code);
+    const payDate = formatPayDate(code, ctx);
     return {
       ...base,
       realtimeInformationChecksum: faker.helpers.arrayElement(['0000', '/ABC', '']),
@@ -39,17 +40,18 @@ export function generateValidRow(includeOptionalFields: boolean | string[]): SDD
   return base;
 }
 
-export function generateInvalidRow(includeOptionalFields: boolean | string[]): SDDirectRow {
-  const row = generateValidRow(includeOptionalFields);
+export function generateInvalidRow(includeOptionalFields: boolean | string[], ctx?: DeterminismContext): SDDirectRow {
+  const row = generateValidRow(includeOptionalFields, ctx);
   if ('destinationSortCode' in row) {
     (row as SDDirectRowBase).destinationSortCode = 'ABCDEF';
   }
   return row;
 }
 
-function pickSDDirectCode(): string {
+function pickSDDirectCode(ctx?: DeterminismContext): string {
   const arr = SDDirectValidator.allowedTransactionCodes;
-  const idx = Math.floor(Math.random() * arr.length);
+  const r = ctx?.rng ? ctx.rng() : Math.random();
+  const idx = Math.floor(r * arr.length);
   return arr[idx] ?? arr[0];
 }
 function allowedName(): string {
@@ -62,9 +64,10 @@ function buildPaymentRef(): string {
   if (new Set(s).size === 1) s = s.slice(0, -1) + 'Z';
   return s;
 }
-function formatPayDate(code: string): string {
+function formatPayDate(code: string, ctx?: DeterminismContext): string {
   const isContra = code === '0C' || code === '0N' || code === '0S';
   const days = isContra ? 3 : faker.number.int({ min: 3, max: 30 });
-  const dt = AddWorkingDays(DateTime.now(), days);
+  const base = ctx?.now ? DateTime.fromMillis(ctx.now()) : DateTime.now();
+  const dt = AddWorkingDays(base, days);
   return dt.toFormat('yyyyLLdd');
 }

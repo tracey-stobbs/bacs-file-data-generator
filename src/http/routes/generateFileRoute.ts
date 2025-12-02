@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { generateFile } from '../../lib/factory.js';
+import { ensureSeeded } from '../../lib/seeding/ensureSeeded.js';
+import { createDeterminismContext } from '../../lib/determinism/context.js';
 import { faker } from '@faker-js/faker';
 import type { GenerationRequest } from '../../types.js';
 import { DateTime } from 'luxon';
@@ -8,6 +10,7 @@ interface BodySchema {
   fileType?: string;
   rows?: unknown;
   seed?: unknown;
+  fixedTimestamp?: unknown;
   processingDate?: unknown;
   originating?: {
     sortCode?: string;
@@ -74,6 +77,7 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
             fileType: { type: 'string', enum: ['EaziPay'] },
             rows: { type: 'integer', minimum: 1 },
             seed: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            fixedTimestamp: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\d+$' }] },
             processingDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
             originating: {
               type: 'object',
@@ -106,28 +110,31 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
         await reply.status(mapped.error === 'UNSUPPORTED_FILE_TYPE' ? 501 : 400).send(mapped);
         return;
       }
-      // Deterministic seeding
+      // Deterministic seeding via central gate
+      let seedUsed: number | undefined;
       if (body.seed != null) {
         const parsed = parseSeed(body.seed);
         if (typeof parsed === 'object') {
           await reply.status(400).send(parsed);
           return;
         }
-        process.env.FAKER_SEED = String(parsed);
-        try {
-          faker.seed(parsed);
-        } catch {
-          /* ignore */
-        }
+        seedUsed = ensureSeeded({ seed: parsed });
       } else {
         delete process.env.FAKER_SEED;
       }
+      const fixedTsVal = body.fixedTimestamp;
+      const fixedTs =
+        typeof fixedTsVal === 'number'
+          ? fixedTsVal
+          : typeof fixedTsVal === 'string' && /^\d+$/.test(fixedTsVal)
+            ? Number(fixedTsVal)
+            : undefined;
       try {
-        const result = await generateFile(mapped);
+        const result = await generateFile({ ...mapped, fakerSeed: seedUsed, fixedTimestamp: fixedTs });
         void reply.header('Content-Type', 'text/csv');
         void reply.header(
           'Content-Disposition',
-          `attachment; filename="${mapped.fileType}-${Date.now()}.csv"`
+          `attachment; filename="${mapped.fileType}-${(fixedTs ?? Date.now())}.csv"`
         );
         await reply.send(result.fileContent);
       } catch (err) {
@@ -215,22 +222,15 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
             ? Number(fixedTsVal)
             : Date.now();
 
-      if (parsedSeed != null) {
-        process.env.FAKER_SEED = String(parsedSeed);
-        try {
-          faker.seed(parsedSeed);
-        } catch {
-          /* ignore */
-        }
-      } else {
-        delete process.env.FAKER_SEED;
-      }
+      const seedUsed = parsedSeed != null ? ensureSeeded({ seed: parsedSeed }) : undefined;
 
       try {
-        const mapped: GenerationRequest = {
+        const mapped: GenerationRequest & { fakerSeed?: number; fixedTimestamp?: number } = {
           fileType: 'EaziPay',
           numberOfRows: rows as number,
           originating: (body.originating as GenerationRequest['originating']) || undefined,
+          fakerSeed: seedUsed,
+          fixedTimestamp: timestamp,
         };
         const result = await generateFile(mapped);
         const payload = result.fileContent;
@@ -240,7 +240,7 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
             fileType: 'EaziPay',
             rows: rows as number,
             format,
-            seed: parsedSeed ?? 0,
+            seed: seedUsed ?? 0,
             timestamp,
           },
         });

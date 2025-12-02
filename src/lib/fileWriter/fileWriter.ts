@@ -3,6 +3,7 @@ import { pickRandomEaziPayFormat } from '../utils/dateFormatter.js';
 import type { EaziPayDateFormat } from '../utils/dateFormatter.js';
 import type { FileSystem } from '../utils/fsWrapper.js';
 import { safeJoinOutput } from '../utils/fsWrapper.js';
+import type { DeterminismContext } from '../determinism/context.js';
 
 interface SerializeCapable {
   rows?: string[][];
@@ -31,16 +32,19 @@ export async function generateFileWithFs(
     columns?: number;
     includeHeaders?: boolean;
     validity?: 'V' | 'I';
+    determinism?: DeterminismContext;
   }
 ): Promise<{ filePath: string; fileContent: string }> {
   const fileType = options?.fileType ?? request.fileType ?? 'EaziPay';
   const columns = options?.columns ?? (fileType === 'EaziPay' ? 14 : undefined);
   const headerFlag = options?.includeHeaders ? 'H' : 'NH';
   const validityFlag = options?.validity ?? (request.hasInvalidRows ? 'I' : 'V');
-  const ts = DateTime.now().toFormat('yyyyLLdd_HHmmss');
+  const tsNow = options?.determinism?.now ? options.determinism.now() : Date.now();
+  const ts = DateTime.fromMillis(tsNow).toFormat('yyyyLLdd_HHmmss');
   let ext = 'csv';
   if (fileType === 'EaziPay') {
-    ext = Math.random() < 0.5 ? 'csv' : 'txt';
+    const r = options?.determinism?.rng ? options.determinism.rng() : Math.random();
+    ext = r < 0.5 ? 'csv' : 'txt';
   } else if (fileType === 'Bacs18PaymentLines' || fileType === 'Bacs18StandardFile') {
     ext = 'txt';
   }
