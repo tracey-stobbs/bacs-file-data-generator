@@ -1,5 +1,5 @@
 // Domain type definitions for generation & preview API (replaces legacy generic placeholders)
-export type SupportedFileType = 'EaziPay';
+export type SupportedFileType = 'EaziPay' | 'SDDirect' | 'Bacs18PaymentLines';
 export type CommonTransactionCode = '01' | '17' | '18' | '99' | '0C' | '0N' | '0S';
 
 export interface BaseGenerationRequest {
@@ -21,7 +21,22 @@ export interface EaziPayGenerationRequest extends BaseGenerationRequest {
   originating?: OriginatingAccountDetails;
 }
 
-export type GenerationRequest = EaziPayGenerationRequest;
+export interface SDDirectGenerationRequest extends BaseGenerationRequest {
+  fileType: 'SDDirect';
+  originating?: OriginatingAccountDetails;
+  includeOptionalFields?: boolean;
+}
+
+export interface Bacs18GenerationRequest extends BaseGenerationRequest {
+  fileType: 'Bacs18PaymentLines';
+  bacs18Type?: 'DAILY' | 'MULTI';
+  originating: Required<OriginatingAccountDetails>;
+}
+
+export type GenerationRequest =
+  | EaziPayGenerationRequest
+  | SDDirectGenerationRequest
+  | Bacs18GenerationRequest;
 
 export interface GeneratedFileResult {
   filePath: string;

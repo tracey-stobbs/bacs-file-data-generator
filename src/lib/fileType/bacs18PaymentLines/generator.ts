@@ -2,6 +2,7 @@ import { nodeFs, safeJoinOutput } from '../../utils/fsWrapper.js';
 import { DateTime } from 'luxon';
 import { faker } from '@faker-js/faker';
 import { Bacs18Validator } from '../../validators/bacs18Validator.js';
+import type { DeterminismContext } from '../../determinism/context.js';
 export type Bacs18Type = 'DAILY' | 'MULTI';
 export interface Bacs18Row {
   destinationSortCode: string;
@@ -66,10 +67,12 @@ export interface Bacs18GenerateRequest extends Omit<Bacs18PreviewRequest, 'fileT
   fileType: 'Bacs18PaymentLines';
 }
 export async function generateFile(
-  req: Bacs18GenerateRequest
+  req: Bacs18GenerateRequest,
+  opts?: { determinism?: DeterminismContext }
 ): Promise<{ filePath: string; fileContent: string }> {
   const validityFlag = req.hasInvalidRows ? 'I' : 'V';
-  const ts = DateTime.now().toFormat('yyyyLLdd_HHmmss');
+  const nowMillis = opts?.determinism?.now ? opts.determinism.now() : Date.now();
+  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyyLLdd_HHmmss');
   const type: Bacs18Type = req.bacs18Type ?? 'MULTI';
   const fileName = `Bacs18PaymentLines_${type}_${req.numberOfRows}_${validityFlag}_${ts}.txt`;
   const rel = safeJoinOutput('Bacs18PaymentLines', req.sun ?? 'DEFAULT', fileName);
@@ -99,11 +102,14 @@ function julian(dt: DateTime): string {
   const day = String(dt.ordinal).padStart(3, '0');
   return ` ${year}${day}`;
 }
-export function generateValidBacs18Row(originating: {
+export function generateValidBacs18Row(
+  originating: {
   sortCode: string;
   accountNumber: string;
   accountName: string;
-}): Bacs18Row {
+  },
+  opts?: { determinism?: DeterminismContext }
+): Bacs18Row {
   const amountPence = String(faker.number.int({ min: 1, max: 9_999_999 })) + '00';
   const tx = faker.helpers.arrayElement(Bacs18Validator.allowedTransactionCodes);
   return {
@@ -120,15 +126,20 @@ export function generateValidBacs18Row(originating: {
       .padEnd(18, ' ')
       .slice(0, 18),
     destinationAccountName: sanitize(faker.company.name()).padEnd(18, ' ').slice(0, 18),
-    processingDateJulian: julian(DateTime.now()),
+    processingDateJulian: julian(
+      opts?.determinism?.now ? DateTime.fromMillis(opts.determinism.now()) : DateTime.now()
+    ),
   };
 }
-export function generateInvalidBacs18Row(originating: {
+export function generateInvalidBacs18Row(
+  originating: {
   sortCode: string;
   accountNumber: string;
   accountName: string;
-}): Bacs18Row {
-  const row = generateValidBacs18Row(originating);
+  },
+  opts?: { determinism?: DeterminismContext }
+): Bacs18Row {
+  const row = generateValidBacs18Row(originating, opts);
   row.destinationSortCode = 'ABCDEF';
   return row;
 }
