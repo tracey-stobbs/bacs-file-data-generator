@@ -19,9 +19,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "pretest": "npm run lint && npx prettier --check .",
-    "test": "vitest -c ./vitest.config.ts",
+    "test": "vitest run -c ./vitest.config.ts",
+    "test:coverage": "vitest run -c ./vitest.config.ts --coverage",
     "lint": "eslint . --ext .ts",
-    "generate-file": "node --loader ts-node/esm src/cli/generate.ts",
     "dev-server": "node --loader ts-node/esm src/server.ts",
     "start:generator": "node dist/server.js"
   },

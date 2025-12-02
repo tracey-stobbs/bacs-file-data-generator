@@ -135,4 +135,118 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
       }
     }
   );
+
+  // New minimal, stricter route aligned with implementation plan
+  app.post(
+    '/generate',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          properties: {
+            fileType: { type: 'string', enum: ['EaziPay'] },
+            rows: { type: 'integer', minimum: 1 },
+            format: { type: 'string', enum: ['CSV', 'BacsCSV', 'JSON'] },
+            fakerSeed: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            fixedTimestamp: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            originating: {
+              type: 'object',
+              properties: {
+                sortCode: { type: 'string' },
+                accountNumber: { type: 'string' },
+                accountName: { type: 'string' },
+              },
+              additionalProperties: false,
+            },
+          },
+          required: ['fileType', 'rows'],
+          additionalProperties: false,
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              payload: { type: 'string' },
+              metadata: {
+                type: 'object',
+                properties: {
+                  fileType: { type: 'string' },
+                  rows: { type: 'integer' },
+                  format: { type: 'string' },
+                  seed: { type: 'integer' },
+                  timestamp: { type: 'integer' },
+                },
+                required: ['fileType', 'rows', 'format', 'seed', 'timestamp'],
+              },
+            },
+            required: ['payload', 'metadata'],
+          },
+          400: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          422: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          500: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+        },
+      },
+    },
+    async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      const body = (req.body as Record<string, unknown>) || {};
+      const fileType = body.fileType;
+      const rows = body.rows;
+      const format = (body.format as string | undefined) || 'CSV';
+      const seedVal = body.fakerSeed;
+      const fixedTsVal = body.fixedTimestamp;
+
+      if (fileType !== 'EaziPay') {
+        await reply.status(400).send({ error: 'UNSUPPORTED_FILE_TYPE' });
+        return;
+      }
+      if (!isPositiveInt(rows)) {
+        await reply.status(422).send({ error: 'INVALID_ROWS' });
+        return;
+      }
+      const parsedSeed = parseSeed(seedVal);
+      if (typeof parsedSeed === 'object' && 'error' in parsedSeed) {
+        await reply.status(400).send(parsedSeed);
+        return;
+      }
+      const timestamp =
+        typeof fixedTsVal === 'number'
+          ? fixedTsVal
+          : typeof fixedTsVal === 'string' && /^\d+$/.test(fixedTsVal)
+            ? Number(fixedTsVal)
+            : Date.now();
+
+      if (parsedSeed != null) {
+        process.env.FAKER_SEED = String(parsedSeed);
+        try {
+          faker.seed(parsedSeed);
+        } catch {
+          /* ignore */
+        }
+      } else {
+        delete process.env.FAKER_SEED;
+      }
+
+      try {
+        const mapped: GenerationRequest = {
+          fileType: 'EaziPay',
+          numberOfRows: rows as number,
+          originating: (body.originating as GenerationRequest['originating']) || undefined,
+        };
+        const result = await generateFile(mapped);
+        const payload = result.fileContent;
+        await reply.send({
+          payload,
+          metadata: {
+            fileType: 'EaziPay',
+            rows: rows as number,
+            format,
+            seed: parsedSeed ?? 0,
+            timestamp,
+          },
+        });
+      } catch {
+        await reply.status(500).send({ error: 'GENERATION_FAILED' });
+      }
+    }
+  );
 }
