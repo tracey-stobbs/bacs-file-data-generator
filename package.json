@@ -23,13 +23,13 @@
     "test:coverage": "vitest run -c ./vitest.config.ts --coverage",
     "lint": "eslint . --ext .ts",
     "dev-server": "node --loader ts-node/esm src/server.ts",
-    "start:generator": "node dist/server.js"
+    "serve": "node dist/server.js"
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.0",
     "@fastify/multipart": "9.3.0",
     "fastify": "^5.6.2",
-    "lts": "^2.0.0",
+    
     "luxon": "^3.5.0",
     "pino": "^9.0.0",
     "xmlbuilder2": "4.0.1"
