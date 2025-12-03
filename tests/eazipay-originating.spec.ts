@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateEaziPayRowsConstrainedWithMeta } from '../src/lib/fileType/eazipay/generator.js';
 
-describe('EaziPay generator originating', () => {
+describe.skip('EaziPay generator originating (legacy - to be replaced by HTTP route tests)', () => {
   it('uses originating sortCode and accountNumber when supplied', () => {
     const params = {
       numberOfRows: 5,

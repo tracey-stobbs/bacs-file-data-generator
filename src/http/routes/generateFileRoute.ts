@@ -1,24 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { generateFile } from '../../lib/factory.js';
 import { ensureSeeded } from '../../lib/seeding/ensureSeeded.js';
-import { createDeterminismContext } from '../../lib/determinism/context.js';
-import { faker } from '@faker-js/faker';
 import type { GenerationRequest } from '../../types.js';
-import { DateTime } from 'luxon';
 
-interface BodySchema {
-  fileType?: string;
-  rows?: unknown;
-  seed?: unknown;
-  fixedTimestamp?: unknown;
-  processingDate?: unknown;
-  originating?: {
-    sortCode?: string;
-    accountNumber?: string;
-    accountName?: string;
-  };
-  hasInvalidRows?: unknown;
-}
+// Removed legacy BodySchema in favor of inline validation within the route
 
 type ValidationError = { error: string; detail?: Record<string, unknown> };
 
@@ -33,38 +18,7 @@ function parseSeed(val: unknown): number | undefined | ValidationError {
   return { error: 'INVALID_SEED', detail: { provided: val } };
 }
 
-function validateProcessingDate(val: unknown): string | undefined | ValidationError {
-  if (val == null) return undefined;
-  if (typeof val !== 'string')
-    return { error: 'INVALID_PROCESSING_DATE_TYPE', detail: { provided: val } };
-  const dt = DateTime.fromISO(val, { zone: 'utc' });
-  if (!dt.isValid)
-    return {
-      error: 'INVALID_PROCESSING_DATE_FORMAT',
-      detail: { provided: val },
-    };
-  return dt.toISODate();
-}
-
-function mapToGenerationRequest(body: BodySchema): GenerationRequest | ValidationError {
-  if (body.fileType !== 'EaziPay')
-    return {
-      error: 'UNSUPPORTED_FILE_TYPE',
-      detail: { fileType: body.fileType },
-    };
-  if (!isPositiveInt(body.rows)) return { error: 'INVALID_ROWS', detail: { rows: body.rows } };
-  const seedParsed = parseSeed(body.seed);
-  if (typeof seedParsed === 'object' && 'error' in seedParsed) return seedParsed;
-  const processingDateParsed = validateProcessingDate(body.processingDate);
-  if (typeof processingDateParsed === 'object' && 'error' in processingDateParsed)
-    return processingDateParsed;
-  return {
-    fileType: 'EaziPay',
-    numberOfRows: body.rows as number,
-    hasInvalidRows: body.hasInvalidRows === true || body.hasInvalidRows === 'true',
-    originating: body.originating,
-  };
-}
+// legacy processing-date mapping removed; route validates inline per plan
 
 export function registerGenerateFileRoute(app: FastifyInstance): void {
   // Single modern route aligned with implementation plan

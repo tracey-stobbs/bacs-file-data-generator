@@ -29,7 +29,6 @@
     "@faker-js/faker": "^9.0.0",
     "@fastify/multipart": "9.3.0",
     "fastify": "^5.6.2",
-    
     "luxon": "^3.5.0",
     "pino": "^9.0.0",
     "xmlbuilder2": "4.0.1"

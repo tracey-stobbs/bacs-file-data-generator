@@ -31,9 +31,14 @@ export async function generateFile(
     }
     // Wire SDDirect and Bacs18PaymentLines when type unions are expanded
     default:
-      throw new AppError('UNSUPPORTED_FILE_TYPE', `Unsupported fileType ${(req as { fileType?: unknown }).fileType}`, 400, {
-        fileType: (req as { fileType?: unknown }).fileType,
-      });
+      throw new AppError(
+        'UNSUPPORTED_FILE_TYPE',
+        `Unsupported fileType ${(req as { fileType?: unknown }).fileType}`,
+        400,
+        {
+          fileType: (req as { fileType?: unknown }).fileType,
+        }
+      );
   }
 }
 
@@ -53,8 +58,13 @@ export async function previewRows(req: GenerationRequest): Promise<PreviewResult
       return mod.previewBacs18Rows(req as unknown as Bacs18GenerationRequest, invalid);
     }
     default:
-      throw new AppError('UNSUPPORTED_FILE_TYPE', `Unsupported fileType ${(req as { fileType?: unknown }).fileType}`, 400, {
-        fileType: (req as { fileType?: unknown }).fileType,
-      });
+      throw new AppError(
+        'UNSUPPORTED_FILE_TYPE',
+        `Unsupported fileType ${(req as { fileType?: unknown }).fileType}`,
+        400,
+        {
+          fileType: (req as { fileType?: unknown }).fileType,
+        }
+      );
   }
 }

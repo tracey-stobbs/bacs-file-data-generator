@@ -1,3 +1,24 @@
+export type EaziPaySimpleRow = {
+  accountName: string;
+  accountNumber: string;
+  sortCode: string;
+  amountPence: number;
+  reference: string;
+};
+
+export type EaziPayInput = {
+  rows: number;
+};
+
+export type EaziPayValidationResult = {
+  isValid: boolean;
+  message?: string;
+};
+
+export type EaziPayFormatOptions = {
+  delimiter: string;
+  header: boolean;
+};
 export type EaziPayTransactionCode = '01' | '17' | '18' | '99' | '0C' | '0N' | '0S';
 export interface EaziPayRow {
   transactionCode: EaziPayTransactionCode;

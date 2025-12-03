@@ -104,9 +104,9 @@ function julian(dt: DateTime): string {
 }
 export function generateValidBacs18Row(
   originating: {
-  sortCode: string;
-  accountNumber: string;
-  accountName: string;
+    sortCode: string;
+    accountNumber: string;
+    accountName: string;
   },
   opts?: { determinism?: DeterminismContext }
 ): Bacs18Row {
@@ -133,9 +133,9 @@ export function generateValidBacs18Row(
 }
 export function generateInvalidBacs18Row(
   originating: {
-  sortCode: string;
-  accountNumber: string;
-  accountName: string;
+    sortCode: string;
+    accountNumber: string;
+    accountName: string;
   },
   opts?: { determinism?: DeterminismContext }
 ): Bacs18Row {

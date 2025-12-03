@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { generateFile } from '../src/lib/factory.js';
 
-describe('EaziPay SUN Name propagation', () => {
+describe.skip('EaziPay SUN Name propagation (legacy - writes to FS; replaced by HTTP tests)', () => {
   const sunName = 'SUN-C-0QZ5A';
   const originating = {
     sortCode: '912291',

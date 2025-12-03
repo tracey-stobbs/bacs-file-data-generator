@@ -20,7 +20,10 @@ export interface SDDirectRowOptional extends SDDirectRowBase {
 }
 export type SDDirectRow = SDDirectRowBase | SDDirectRowOptional;
 
-export function generateValidRow(includeOptionalFields: boolean | string[], ctx?: DeterminismContext): SDDirectRow {
+export function generateValidRow(
+  includeOptionalFields: boolean | string[],
+  ctx?: DeterminismContext
+): SDDirectRow {
   const code = pickSDDirectCode(ctx);
   const isContra = SDDirectValidator.isContraCode(code);
   const base: SDDirectRowBase = {
@@ -42,7 +45,10 @@ export function generateValidRow(includeOptionalFields: boolean | string[], ctx?
   return base;
 }
 
-export function generateInvalidRow(includeOptionalFields: boolean | string[], ctx?: DeterminismContext): SDDirectRow {
+export function generateInvalidRow(
+  includeOptionalFields: boolean | string[],
+  ctx?: DeterminismContext
+): SDDirectRow {
   const row = generateValidRow(includeOptionalFields, ctx);
   if ('destinationSortCode' in row) {
     (row as SDDirectRowBase).destinationSortCode = 'ABCDEF';
@@ -85,7 +91,11 @@ export function previewRows(
   },
   invalid: boolean,
   ctx?: DeterminismContext
-): { headers: { name: string; value: number }[]; rows: { fields: { value: string; order: number }[] }[]; metadata: { fileType: 'SDDirect'; sun?: string } } {
+): {
+  headers: { name: string; value: number }[];
+  rows: { fields: { value: string; order: number }[] }[];
+  metadata: { fileType: 'SDDirect'; sun?: string };
+} {
   const headers = [
     'Destination Account Name',
     'Destination Sort Code',
@@ -97,7 +107,10 @@ export function previewRows(
     'Pay Date',
   ];
   const rows = Array.from({ length: req.numberOfRows }, (_, idx) => {
-    const row = invalid && idx > 0 ? generateInvalidRow(!!req.includeOptionalFields, ctx) : generateValidRow(!!req.includeOptionalFields, ctx);
+    const row =
+      invalid && idx > 0
+        ? generateInvalidRow(!!req.includeOptionalFields, ctx)
+        : generateValidRow(!!req.includeOptionalFields, ctx);
     const asArray: string[] = [
       row.destinationAccountName,
       row.destinationSortCode,

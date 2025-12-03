@@ -12,7 +12,9 @@ export function ensureSeeded(opts?: SeedOptions): number | undefined {
 
   if (value === undefined) return undefined;
   if (!Number.isFinite(value)) {
-    throw new AppError('INVALID_SEED', `FAKER_SEED must be a finite number, got "${env}"`, 400, { envValue: env });
+    throw new AppError('INVALID_SEED', `FAKER_SEED must be a finite number, got "${env}"`, 400, {
+      envValue: env,
+    });
   }
   // faker.seed accepts a 32-bit integer
   faker.seed(value);

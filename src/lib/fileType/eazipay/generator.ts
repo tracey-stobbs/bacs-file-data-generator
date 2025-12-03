@@ -348,31 +348,52 @@ export const eaziPayAdapter = {
 } as const;
 export async function generateFile(
   req: {
-  numberOfRows?: number;
-  dateFormat?: string;
-  hasInvalidRows?: boolean;
-  originating?: {
-    sortCode?: string;
-    accountNumber?: string;
-    accountName?: string;
-  };
-  sun?: string;
-},
+    numberOfRows?: number;
+    dateFormat?: string;
+    hasInvalidRows?: boolean;
+    originating?: {
+      sortCode?: string;
+      accountNumber?: string;
+      accountName?: string;
+    };
+    sun?: string;
+  },
   opts?: { determinism?: { rng: () => number; now: () => number } }
 ): Promise<{ filePath: string; fileContent: string }> {
-  const rows = eaziPayAdapter.buildPreviewRows(req);
-  const serialized = eaziPayAdapter.serialize(rows);
+  const input: EaziPayInput = { rows: req.numberOfRows ?? 0 };
+  const validation = validateEaziPayInput(input);
+  if (!validation.isValid) {
+    throw new Error(validation.message ?? 'Invalid EaziPay input');
+  }
+  const rows2D = eaziPayAdapter.buildPreviewRows(req);
+  const serialized = eaziPayAdapter.serialize(rows2D);
   const wrapper = {
-    rows,
+    rows: rows2D,
     serialize: () => serialized,
     fileContent: serialized,
-    numberOfRows: req.numberOfRows ?? rows.length,
+    numberOfRows: req.numberOfRows ?? rows2D.length,
     hasInvalidRows: req.hasInvalidRows,
   };
   const fsMod: { nodeFs: FileSystem } = await import('../../utils/fsWrapper.js');
   return generateFileWithFs(wrapper, fsMod.nodeFs, req.sun || 'DEFAULT', {
     determinism: opts?.determinism,
   });
+}
+import { validateEaziPayInput } from './validation.js';
+import { buildEaziPayRows } from './rowBuilder.js';
+import type { DeterminismContext } from '../../determinism/context.js';
+import type { EaziPayInput, EaziPaySimpleRow } from './types.js';
+
+export function previewEaziPayRows(
+  input: EaziPayInput,
+  ctx: DeterminismContext
+): EaziPaySimpleRow[] {
+  const validation = validateEaziPayInput(input);
+  if (!validation.isValid) {
+    throw new Error(validation.message ?? 'Invalid EaziPay input');
+  }
+  const rows = buildEaziPayRows(input.rows, ctx);
+  return rows;
 }
 export function previewRows(req: EaziPayGenerationRequest, _invalid: boolean): PreviewResult {
   // touch the second param so lint doesn't complain while keeping signature consistent with other generators
