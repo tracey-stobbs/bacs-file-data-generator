@@ -37,7 +37,14 @@ export function generateProcessingDate(
   const now = DateTime.now();
   const today = now.startOf('day');
   let targetDate: DateTime;
-  if (EaziPayValidator.isContraCode(transactionCode)) {
+
+  // For special transaction codes (0N, 0C, 0S), always use next day
+  const specialCodes = ['0N', '0C', '0S'];
+  const cleanCode = (transactionCode || '').trim();
+  if (specialCodes.includes(cleanCode)) {
+    // Simply add 1 calendar day
+    targetDate = today.plus({ days: 1 });
+  } else if (EaziPayValidator.isContraCode(transactionCode)) {
     // If generation time is before 16:00 local, contra processing date is next working day.
     // If at or after 16:00, contra processing date is two working days.
     const thresholdHour = 16; // 4pm
@@ -114,12 +121,15 @@ export function generateValidEaziPayRow(
       accountName?: string;
       processingDate?: string | null;
     };
+    allowedCodes?: string[];
   },
   dateFormat: EaziPayDateFormat
 ): EaziPayRow {
-  const transactionCode = faker.helpers.arrayElement(
-    EaziPayValidator.allowedTransactionCodes as readonly string[]
-  ) as EaziPayRow['transactionCode'];
+  const codesPool =
+    req.allowedCodes && req.allowedCodes.length > 0
+      ? req.allowedCodes
+      : Array.from(EaziPayValidator.allowedTransactionCodes);
+  const transactionCode = faker.helpers.arrayElement(codesPool) as EaziPayRow['transactionCode'];
   return {
     transactionCode,
     originatingSortCode: req.originating?.sortCode ?? faker.finance.routingNumber().slice(0, 6),
@@ -149,6 +159,7 @@ export function generateInvalidEaziPayRow(
       accountName?: string;
       processingDate?: string | null;
     };
+    allowedCodes?: string[];
   },
   dateFormat: EaziPayDateFormat
 ): EaziPayRow {
@@ -255,6 +266,7 @@ export const eaziPayAdapter = {
   buildPreviewRows(params: {
     numberOfRows?: number;
     dateFormat?: string;
+    allowedTransactionCodes?: string[];
     hasInvalidRows?: boolean;
     originating?: {
       sortCode?: string;
@@ -268,11 +280,15 @@ export const eaziPayAdapter = {
     const numberOfRows = params.numberOfRows ?? 15;
     const dateFormat: EaziPayDateFormat =
       (params.dateFormat as EaziPayDateFormat | undefined) || pickRandomEaziPayFormat();
+    const allowedCodes =
+      params.allowedTransactionCodes && params.allowedTransactionCodes.length > 0
+        ? params.allowedTransactionCodes
+        : undefined;
     const rows: string[][] = [];
     const invalidRows = params.hasInvalidRows
       ? Math.min(numberOfRows - 1, Math.ceil((numberOfRows - 1) / 2))
       : 0;
-    const internalReq = { originating: params.originating };
+    const internalReq = { originating: params.originating, allowedCodes };
     for (let i = 0; i < numberOfRows; i++) {
       const shouldBeInvalid =
         params.hasInvalidRows && invalidRows > 0 && i >= 1 && i <= invalidRows;
@@ -347,17 +363,7 @@ export const eaziPayAdapter = {
   },
 } as const;
 export async function generateFile(
-  req: {
-    numberOfRows?: number;
-    dateFormat?: string;
-    hasInvalidRows?: boolean;
-    originating?: {
-      sortCode?: string;
-      accountNumber?: string;
-      accountName?: string;
-    };
-    sun?: string;
-  },
+  req: EaziPayGenerationRequest & { determinism?: DeterminismContext },
   opts?: { determinism?: { rng: () => number; now: () => number } }
 ): Promise<{ filePath: string; fileContent: string }> {
   const input: EaziPayInput = { rows: req.numberOfRows ?? 0 };

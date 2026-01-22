@@ -1,4 +1,4 @@
-import type { DeterminismContext } from '../../determinism/context';
+import type { DeterminismContext } from '../../determinism/context.js';
 
 // Creates deterministic fake references and amounts using provided rng
 export function buildSeededGenerators(ctx: DeterminismContext): {

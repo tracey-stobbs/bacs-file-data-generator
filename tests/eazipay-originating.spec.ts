@@ -14,8 +14,9 @@ describe.skip('EaziPay generator originating (legacy - to be replaced by HTTP ro
       },
     } as any;
     const res = generateEaziPayRowsConstrainedWithMeta(params);
-    expect(res.metadata.originating.sortCode).toBe('912291');
-    expect(res.metadata.originating.accountNumber).toBe('51491194');
+    const originating = res.metadata.originating as { sortCode?: string; accountNumber?: string };
+    expect(originating.sortCode).toBe('912291');
+    expect(originating.accountNumber).toBe('51491194');
     // Also validate CSV row columns are patched
     for (const row of res.rows) {
       expect(row[1]).toBe('912291');

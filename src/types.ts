@@ -18,6 +18,7 @@ export interface OriginatingAccountDetails {
 export interface EaziPayGenerationRequest extends BaseGenerationRequest {
   fileType: 'EaziPay';
   dateFormat?: string; // One of EaziPayDateFormat; kept string to avoid circular import here.
+  allowedTransactionCodes?: string[]; // Filter rows to only these transaction codes
   originating?: OriginatingAccountDetails;
 }
 

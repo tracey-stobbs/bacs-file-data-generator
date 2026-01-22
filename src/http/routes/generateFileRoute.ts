@@ -34,6 +34,11 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
             format: { type: 'string', enum: ['CSV', 'BacsCSV', 'JSON'] },
             fakerSeed: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
             fixedTimestamp: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            dateFormat: { type: 'string', enum: ['YYYY-MM-DD', 'DD/MM/YYYY', 'YYYYMMDD'] },
+            allowedTransactionCodes: {
+              type: 'array',
+              items: { type: 'string' },
+            },
             originating: {
               type: 'object',
               properties: {
@@ -103,12 +108,20 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
       const seedUsed = parsedSeed != null ? ensureSeeded({ seed: parsedSeed }) : undefined;
 
       try {
-        const mapped: GenerationRequest & { fakerSeed?: number; fixedTimestamp?: number } = {
+        const mapped: GenerationRequest & {
+          fakerSeed?: number;
+          fixedTimestamp?: number;
+          dateFormat?: string;
+          allowedTransactionCodes?: string[];
+        } = {
           fileType: 'EaziPay',
           numberOfRows: rows as number,
           originating: (body.originating as GenerationRequest['originating']) || undefined,
           fakerSeed: seedUsed,
           fixedTimestamp: timestamp,
+          dateFormat: (body.dateFormat as string | undefined) || undefined,
+          allowedTransactionCodes:
+            (body.allowedTransactionCodes as string[] | undefined) || undefined,
         };
         const result = await generateFile(mapped);
         const payload = result.fileContent;

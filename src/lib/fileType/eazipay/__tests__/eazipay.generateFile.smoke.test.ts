@@ -6,6 +6,7 @@ describe('EaziPay generateFile smoke', () => {
   it('generates a file whose line count matches requested rows', async (): Promise<void> => {
     const numberOfRows = 8;
     const { fileContent } = await generateEaziPayFile({
+      fileType: 'EaziPay',
       numberOfRows,
       hasInvalidRows: true,
       sun: 'DEFAULT',

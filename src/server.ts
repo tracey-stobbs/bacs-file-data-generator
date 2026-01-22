@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import pino from 'pino';
+import { pathToFileURL } from 'url';
 import { registerGenerateFileRoute } from './http/routes/generateFileRoute.js';
 
 const logger = pino({ level: process.env.DEBUG ? 'debug' : 'info' });
@@ -32,8 +33,24 @@ async function start(): Promise<void> {
   }
 }
 
-// Only auto-start if executed directly (ESM entry check)
-const isDirect = import.meta.url === `file://${process.argv[1]}`;
-if (isDirect) void start();
+// Autostart when executed directly (robust cross-platform: compare to file URL version of argv[1])
+try {
+  const directHref = pathToFileURL(process.argv[1]).href;
+  const isDirect = import.meta.url === directHref;
+  if (isDirect) {
+    start().catch((err) => {
+      app.log.error({ err }, 'Start failed');
+      process.exit(1);
+    });
+  }
+} catch {
+  // Fallback to legacy heuristic (may fail on Windows but won't throw)
+  if (import.meta.url === `file://${process.argv[1]}`) {
+    start().catch((err) => {
+      app.log.error({ err }, 'Start failed');
+      process.exit(1);
+    });
+  }
+}
 
 export { app, start };

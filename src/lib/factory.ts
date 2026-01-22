@@ -10,7 +10,12 @@ import { ensureSeeded } from './seeding/ensureSeeded.js';
 import { AppError } from './errors/AppError.js';
 
 export async function generateFile(
-  req: GenerationRequest & { fakerSeed?: number; fixedTimestamp?: number }
+  req: GenerationRequest & {
+    fakerSeed?: number;
+    fixedTimestamp?: number;
+    dateFormat?: string;
+    allowedTransactionCodes?: string[];
+  }
 ): Promise<GeneratedFileResult> {
   const seed = ensureSeeded({ seed: req.fakerSeed });
   const fixed = typeof req.fixedTimestamp === 'number' ? req.fixedTimestamp : undefined;
@@ -19,7 +24,19 @@ export async function generateFile(
   switch (req.fileType) {
     case 'EaziPay': {
       const mod = await import('./fileType/eazipay/generator.js');
-      return mod.generateFile(req, { determinism: ctx });
+      const eaziReq: EaziPayGenerationRequest & {
+        dateFormat?: string;
+        allowedTransactionCodes?: string[];
+      } = {
+        fileType: 'EaziPay',
+        numberOfRows: req.numberOfRows,
+        hasInvalidRows: req.hasInvalidRows,
+        sun: req.sun,
+        dateFormat: req.dateFormat,
+        allowedTransactionCodes: req.allowedTransactionCodes,
+        originating: (req as any).originating,
+      };
+      return mod.generateFile(eaziReq, { determinism: ctx });
     }
     case 'SDDirect': {
       const mod = await import('./fileType/sddirect/index.js');

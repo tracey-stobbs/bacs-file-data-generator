@@ -11,8 +11,7 @@ describe('validateEaziPayInput', () => {
     expect(validateEaziPayInput({ rows: -1 }).isValid).toBe(false);
   });
   it('rejects non-integer rows', () => {
-    // @ts-expect-error force wrong type
-    const res = validateEaziPayInput({ rows: 1.2 });
+    const res = validateEaziPayInput({ rows: 1.2 as number });
     expect(res.isValid).toBe(false);
   });
 });
