@@ -20,6 +20,7 @@ export interface EaziPayGenerationRequest extends BaseGenerationRequest {
   dateFormat?: string; // One of EaziPayDateFormat; kept string to avoid circular import here.
   allowedTransactionCodes?: string[]; // Filter rows to only these transaction codes
   originating?: OriginatingAccountDetails;
+  processingDate?: string; // ISO date string (YYYY-MM-DD) to override processing date for all rows
 }
 
 export interface SDDirectGenerationRequest extends BaseGenerationRequest {

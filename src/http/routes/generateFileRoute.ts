@@ -48,6 +48,7 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
               },
               additionalProperties: false,
             },
+            processingDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
           },
           required: ['fileType', 'rows'],
           additionalProperties: false,
@@ -113,6 +114,7 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
           fixedTimestamp?: number;
           dateFormat?: string;
           allowedTransactionCodes?: string[];
+          processingDate?: string;
         } = {
           fileType: 'EaziPay',
           numberOfRows: rows as number,
@@ -122,6 +124,7 @@ export function registerGenerateFileRoute(app: FastifyInstance): void {
           dateFormat: (body.dateFormat as string | undefined) || undefined,
           allowedTransactionCodes:
             (body.allowedTransactionCodes as string[] | undefined) || undefined,
+          processingDate: (body.processingDate as string | undefined) || undefined,
         };
         const result = await generateFile(mapped);
         const payload = result.fileContent;

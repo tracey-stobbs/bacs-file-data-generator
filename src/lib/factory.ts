@@ -15,6 +15,7 @@ export async function generateFile(
     fixedTimestamp?: number;
     dateFormat?: string;
     allowedTransactionCodes?: string[];
+    processingDate?: string;
   }
 ): Promise<GeneratedFileResult> {
   const seed = ensureSeeded({ seed: req.fakerSeed });
@@ -27,6 +28,7 @@ export async function generateFile(
       const eaziReq: EaziPayGenerationRequest & {
         dateFormat?: string;
         allowedTransactionCodes?: string[];
+        processingDate?: string;
       } = {
         fileType: 'EaziPay',
         numberOfRows: req.numberOfRows,
@@ -35,6 +37,7 @@ export async function generateFile(
         dateFormat: req.dateFormat,
         allowedTransactionCodes: req.allowedTransactionCodes,
         originating: (req as any).originating,
+        processingDate: req.processingDate,
       };
       return mod.generateFile(eaziReq, { determinism: ctx });
     }

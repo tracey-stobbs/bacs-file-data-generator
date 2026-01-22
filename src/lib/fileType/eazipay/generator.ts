@@ -3,7 +3,6 @@ import { DateTime } from 'luxon';
 import { EaziPayValidator } from '../../validators/eazipayValidator.js';
 import { formatEaziPayDate, pickRandomEaziPayFormat } from '../../utils/dateFormatter.js';
 import { AddWorkingDays } from '../../utils/calendar.js';
-import { IsWorkingDay } from '../../utils/calendar.js';
 import { generateFileWithFs } from '../../fileWriter/fileWriter.js';
 import type { EaziPayRow } from './types.js';
 import type {
@@ -32,51 +31,17 @@ function generateAmount(transactionCode: string): number {
 }
 export function generateProcessingDate(
   transactionCode: string,
-  dateFormat: EaziPayDateFormat
+  dateFormat: EaziPayDateFormat,
+  overrideDate?: string | null
 ): string {
-  const now = DateTime.now();
-  const today = now.startOf('day');
-  let targetDate: DateTime;
-
-  // For special transaction codes (0N, 0C, 0S), always use next day
-  const specialCodes = ['0N', '0C', '0S'];
-  const cleanCode = (transactionCode || '').trim();
-  if (specialCodes.includes(cleanCode)) {
-    // Simply add 1 calendar day
-    targetDate = today.plus({ days: 1 });
-  } else if (EaziPayValidator.isContraCode(transactionCode)) {
-    // If generation time is before 16:00 local, contra processing date is next working day.
-    // If at or after 16:00, contra processing date is two working days.
-    const thresholdHour = 16; // 4pm
-    const useDays = now.hour < thresholdHour ? 1 : 2;
-    targetDate = AddWorkingDays(today, useDays);
-    // Ensure contra processing date is not beyond 30 calendar days
-    const maxDate = today.plus({ days: 30 });
-    if (targetDate > maxDate) {
-      // Move back to the latest working day on or before maxDate
-      let candidate = maxDate;
-      while (!IsWorkingDay(candidate)) {
-        candidate = candidate.minus({ days: 1 });
-      }
-      targetDate = candidate;
-    }
-  } else {
-    // Ensure working days is bounded to [2,30]
-    let workingDays = faker.number.int({ min: 2, max: 30 });
-    if (workingDays < 2) workingDays = 2;
-    if (workingDays > 30) workingDays = 30;
-    targetDate = AddWorkingDays(today, workingDays);
-    // Ensure the chosen processing date is no more than 30 calendar days from today.
-    const maxDate = today.plus({ days: 30 });
-    if (targetDate > maxDate) {
-      // If it falls beyond the calendar limit, move back to the latest working day on or before maxDate
-      let candidate = maxDate;
-      while (!IsWorkingDay(candidate)) {
-        candidate = candidate.minus({ days: 1 });
-      }
-      targetDate = candidate;
-    }
+  // If an override date is provided, use it regardless of transaction code
+  if (overrideDate) {
+    return overrideDate;
   }
+
+  // Default behavior when no override: use today + 1 working day for all transaction codes
+  const today = DateTime.now().startOf('day');
+  const targetDate = AddWorkingDays(today, 1);
   return formatEaziPayDate(targetDate, dateFormat);
 }
 function generateSunNumber(transactionCode: string): string {
@@ -139,8 +104,11 @@ export function generateValidEaziPayRow(
     destinationAccountName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     fixedZero: 0,
     amount: generateAmount(transactionCode),
-    processingDate:
-      req.originating?.processingDate ?? generateProcessingDate(transactionCode, dateFormat),
+    processingDate: generateProcessingDate(
+      transactionCode,
+      dateFormat,
+      req.originating?.processingDate
+    ),
     empty: undefined,
     // Ensure SUN Name does not contain commas or non-ASCII characters which would
     // break the CSV (fields are not quoted). Reuse the same sanitiser used for
@@ -276,6 +244,7 @@ export const eaziPayAdapter = {
       sunNumber?: string;
     };
     sun?: string;
+    processingDate?: string;
   }): string[][] {
     const numberOfRows = params.numberOfRows ?? 15;
     const dateFormat: EaziPayDateFormat =
@@ -288,7 +257,13 @@ export const eaziPayAdapter = {
     const invalidRows = params.hasInvalidRows
       ? Math.min(numberOfRows - 1, Math.ceil((numberOfRows - 1) / 2))
       : 0;
-    const internalReq = { originating: params.originating, allowedCodes };
+    const internalReq = {
+      originating: {
+        ...params.originating,
+        processingDate: params.processingDate,
+      },
+      allowedCodes,
+    };
     for (let i = 0; i < numberOfRows; i++) {
       const shouldBeInvalid =
         params.hasInvalidRows && invalidRows > 0 && i >= 1 && i <= invalidRows;
@@ -504,10 +479,13 @@ export function generateEaziPayRowsConstrained(params: {
       rowObj.transactionCode = allowed[i % allowed.length] as EaziPayRow['transactionCode'];
       // Recalculate amount and processingDate based on the final transaction code
       rowObj.amount = generateAmount(String(rowObj.transactionCode));
-      // Only recalculate processingDate when no explicit fixed processingDate was requested.
-      if (!(params && params.processingDate)) {
-        rowObj.processingDate = generateProcessingDate(String(rowObj.transactionCode), dateFormat);
-      }
+      // When a fixed processingDate is supplied, always use it regardless of transaction code.
+      // When no fixed date is supplied, generate a new one based on the (possibly changed) transaction code.
+      rowObj.processingDate = generateProcessingDate(
+        String(rowObj.transactionCode),
+        dateFormat,
+        params.processingDate
+      );
     }
     rows.push(formatEaziPayRowAsArray(rowObj));
   }
