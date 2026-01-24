@@ -36,11 +36,8 @@ export async function generateFileWithFs(
   }
 ): Promise<{ filePath: string; fileContent: string }> {
   const fileType = options?.fileType ?? request.fileType ?? 'EaziPay';
-  const columns = options?.columns ?? (fileType === 'EaziPay' ? 14 : undefined);
-  const headerFlag = options?.includeHeaders ? 'H' : 'NH';
-  const validityFlag = options?.validity ?? (request.hasInvalidRows ? 'I' : 'V');
   const tsNow = options?.determinism?.now ? options.determinism.now() : Date.now();
-  const ts = DateTime.fromMillis(tsNow).toFormat('yyyyLLdd_HHmmss');
+  const ts = DateTime.fromMillis(tsNow).toFormat('yyyy-LL-dd-HH-mm-ss');
   let ext = 'csv';
   if (fileType === 'EaziPay') {
     const r = options?.determinism?.rng ? options.determinism.rng() : Math.random();
@@ -48,9 +45,9 @@ export async function generateFileWithFs(
   } else if (fileType === 'Bacs18PaymentLines' || fileType === 'Bacs18StandardFile') {
     ext = 'txt';
   }
-  const colsPart = columns ? `${columns}` : 'x';
-  const fileName = `${fileType}_${colsPart}_${request.numberOfRows ?? 'x'}_${headerFlag}_${validityFlag}_${ts}.${ext}`;
-  const rel = safeJoinOutput(fileType, sun, fileName);
+  const rowsCount = request.numberOfRows ?? 'x';
+  const fileName = `${ts}-${fileType}-${rowsCount}.${ext}`;
+  const rel = safeJoinOutput('file-data-generator', fileType, fileName);
   let content: string;
   if (typeof (request as SerializeCapable).serialize === 'function') {
     const rows = request.rows ?? [];

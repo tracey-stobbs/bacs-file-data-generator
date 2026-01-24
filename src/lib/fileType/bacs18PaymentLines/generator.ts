@@ -70,12 +70,11 @@ export async function generateFile(
   req: Bacs18GenerateRequest,
   opts?: { determinism?: DeterminismContext }
 ): Promise<{ filePath: string; fileContent: string }> {
-  const validityFlag = req.hasInvalidRows ? 'I' : 'V';
   const nowMillis = opts?.determinism?.now ? opts.determinism.now() : Date.now();
-  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyyLLdd_HHmmss');
+  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyy-LL-dd-HH-mm-ss');
   const type: Bacs18Type = req.bacs18Type ?? 'MULTI';
-  const fileName = `Bacs18PaymentLines_${type}_${req.numberOfRows}_${validityFlag}_${ts}.txt`;
-  const rel = safeJoinOutput('Bacs18PaymentLines', req.sun ?? 'DEFAULT', fileName);
+  const fileName = `${ts}-Bacs18PaymentLines-${req.numberOfRows}.txt`;
+  const rel = safeJoinOutput('file-data-generator', 'Bacs18PaymentLines', fileName);
   const lines: string[] = [];
   for (let i = 0; i < req.numberOfRows; i++) {
     const invalidRow = req.hasInvalidRows && i > 0;

@@ -1,5 +1,5 @@
 {
-  "name": "bacs-file-data-generator",
+  "name": "file-data-generator",
   "version": "0.0.0-dev",
   "description": "Domain library for generating BACS style test data (EaziPay, SDDirect, Bacs18PaymentLines)",
   "type": "module",

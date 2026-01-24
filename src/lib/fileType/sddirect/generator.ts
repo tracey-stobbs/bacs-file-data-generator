@@ -141,11 +141,10 @@ export async function generateFile(
   },
   opts?: { determinism?: DeterminismContext }
 ): Promise<{ filePath: string; fileContent: string }> {
-  const validityFlag = req.hasInvalidRows ? 'I' : 'V';
   const nowMillis = opts?.determinism?.now ? opts.determinism.now() : Date.now();
-  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyyLLdd_HHmmss');
-  const fileName = `SDDirect_${req.numberOfRows}_${validityFlag}_${ts}.csv`;
-  const rel = safeJoinOutput('SDDirect', req.sun ?? 'DEFAULT', fileName);
+  const ts = DateTime.fromMillis(nowMillis).toFormat('yyyy-LL-dd-HH-mm-ss');
+  const fileName = `${ts}-SDDirect-${req.numberOfRows}.csv`;
+  const rel = safeJoinOutput('file-data-generator', 'SDDirect', fileName);
   const preview = previewRows(req, !!req.hasInvalidRows, opts?.determinism);
   const content = preview.rows.map((r) => r.fields.map((f) => f.value).join(',')).join('\n') + '\n';
   await nodeFs.writeTextFile(rel, content);
