@@ -22,6 +22,7 @@
     "test": "vitest run -c ./vitest.config.ts",
     "test:coverage": "vitest run -c ./vitest.config.ts --coverage",
     "lint": "eslint . --ext .ts",
+    "generate-file": "node --loader ts-node/esm src/scripts/generate-file.ts",
     "dev-server": "node --loader ts-node/esm src/server.ts",
     "serve": "node dist/server.js"
   },

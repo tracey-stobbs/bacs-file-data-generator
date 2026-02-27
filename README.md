@@ -34,6 +34,100 @@ export OUTPUT_ROOT=/custom/path
 npm run dev
 ```
 
+## Multi-Client Generation (Bacs18PaymentLines)
+
+The CLI supports generating multiple Bacs18PaymentLines files from a single command using environment-based SUN configuration. This feature is designed for batch generation scenarios where you need to create files for multiple SUNs.
+
+### Configuration
+
+Set up SUN configurations using environment variables with the pattern `SUN_N_*`:
+
+```env
+# SUN 1
+SUN_1_SUN_NUMBER=510001
+SUN_1_SUN_NAME=TMS FM
+SUN_1_SORT_CODE=106057
+SUN_1_ACCOUNT_NUMBER=99128289
+SUN_1_ACCOUNT_NAME=Holder-GO2
+SUN_1_BANK_NAME=Bank-WP5A
+
+# SUN 2
+SUN_2_SUN_NUMBER=510002
+SUN_2_SUN_NAME=TMS FM2
+SUN_2_SORT_CODE=128880
+SUN_2_ACCOUNT_NUMBER=64380990
+SUN_2_ACCOUNT_NAME=Holder-JLY
+SUN_2_BANK_NAME=Bank-ISUE
+
+# SUN 3
+SUN_3_SUN_NUMBER=510003
+SUN_3_SUN_NAME=TMS FM3
+SUN_3_SORT_CODE=132500
+SUN_3_ACCOUNT_NUMBER=43258335
+SUN_3_ACCOUNT_NAME=Holder-ZEW
+SUN_3_BANK_NAME=Bank-S0NH
+```
+
+**Rules:**
+
+- SUN numbering starts at 1 (not 0)
+- Sequential numbering (gaps stop loading)
+- All six fields required for each SUN
+- SUN names are sanitized for use in filenames
+
+### Available SUNs
+
+| SUN    | Sun Name | Sort Code | Account Number | Account Name | Bank Name |
+| ------ | -------- | --------- | -------------- | ------------ | --------- |
+| 510001 | TMS FM   | 106057    | 99128289       | Holder-GO2   | Bank-WP5A |
+| 510002 | TMS FM2  | 128880    | 64380990       | Holder-JLY   | Bank-ISUE |
+| 510003 | TMS FM3  | 132500    | 43258335       | Holder-ZEW   | Bank-S0NH |
+| 510004 | TMS FM4  | 141635    | 19458259       | Holder-KED   | Bank-2S7I |
+| 510005 | TMS FM5  | 161468    | 89933237       | Holder-GBE   | Bank-U9WR |
+| 510101 | TMS OWN  | 111030    | 85055071       | Holder-10K   | Bank-SHR9 |
+| 510102 | TMS OWN2 | 133213    | 40469964       | Holder-3JL   | Bank-LP3D |
+
+### Usage
+
+Generate files for all configured SUNs:
+
+```bash
+npm run generate-file -- --fileType=Bacs18PaymentLines --rows=10
+```
+
+This will:
+
+1. Detect no `--originating.*` arguments were provided
+2. Load SUN configurations from environment variables
+3. Generate one DAILY-type file per SUN
+4. Use sanitized SUN name in each filename:
+   - `2026-02-24-14-30-00-Bacs18PaymentLines_TMS-FM-10.txt`
+   - `2026-02-24-14-30-00-Bacs18PaymentLines_TMS-FM2-10.txt`
+   - `2026-02-24-14-30-00-Bacs18PaymentLines_TMS-FM3-10.txt`
+
+### Single-File Mode (Override)
+
+Providing explicit `--originating.*` arguments bypasses multi-SUN mode and generates a single file:
+
+```bash
+npm run generate-file -- --fileType=Bacs18PaymentLines --rows=10 \
+  --originating.sortCode=999999 \
+  --originating.accountNumber=88888888 \
+  --originating.accountName="Single Client"
+```
+
+This preserves backward compatibility and allows explicit control when needed.
+
+### File Type Behavior
+
+| Mode                        | Type Default | Processing Date  | Behavior         |
+| --------------------------- | ------------ | ---------------- | ---------------- |
+| Multi-SUN (env config)      | DAILY        | Blank (6 spaces) | Batch generation |
+| Single-file (explicit args) | MULTI        | Julian date      | Current behavior |
+| Library API                 | MULTI        | Julian date      | Unchanged        |
+
+**Note:** Multi-SUN generation is CLI-only. The library `generateFile()` API remains single-file oriented.
+
 ## Endpoint
 
 `POST /generate-file`

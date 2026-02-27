@@ -7,6 +7,7 @@ export interface BaseGenerationRequest {
   numberOfRows: number;
   hasInvalidRows?: boolean;
   sun?: string;
+  clientIdentifier?: string; // Optional client identifier for multi-client file naming
 }
 
 export interface OriginatingAccountDetails {
@@ -32,7 +33,7 @@ export interface SDDirectGenerationRequest extends BaseGenerationRequest {
 export interface Bacs18GenerationRequest extends BaseGenerationRequest {
   fileType: 'Bacs18PaymentLines';
   bacs18Type?: 'DAILY' | 'MULTI';
-  originating: Required<OriginatingAccountDetails>;
+  originating?: OriginatingAccountDetails; // Optional - falls back to faker-generated values
 }
 
 export type GenerationRequest =

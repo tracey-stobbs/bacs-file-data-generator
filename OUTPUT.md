@@ -9,6 +9,7 @@ The **file-data-generator** package produces BACS test data files in multiple fo
 **Base Path:** `${OUTPUT_ROOT}/file-data-generator/`
 
 Files are organized by type in subdirectories:
+
 - `EaziPay/` — CSV files for EaziPay format (random .csv or .txt)
 - `SDDirect/` — CSV files for SDDirect format
 - `Bacs18PaymentLines/` — Text files for Bacs18 format
@@ -18,6 +19,7 @@ Files are organized by type in subdirectories:
 **Format:** `YYYY-MM-DD-HH-mm-ss-<FileType>-<RowCount>.<ext>`
 
 **Example:**
+
 ```
 2025-01-24-14-30-45-EaziPay-100.csv
 2025-01-24-14-30-45-SDDirect-50.csv
@@ -25,6 +27,7 @@ Files are organized by type in subdirectories:
 ```
 
 **Components:**
+
 - `YYYY-MM-DD-HH-mm-ss` — ISO 8601 timestamp with minute precision (e.g., `2025-01-24-14-30-45`)
 - `FileType` — The file type being generated (EaziPay, SDDirect, Bacs18PaymentLines)
 - `RowCount` — Number of data rows in the file
@@ -51,12 +54,14 @@ Files are organized by type in subdirectories:
 ### Setting OUTPUT_ROOT
 
 **Via .env file (recommended):**
+
 ```bash
 # Create .env in workspace root
 OUTPUT_ROOT=./output
 ```
 
 **Via environment variable:**
+
 ```bash
 export OUTPUT_ROOT=/path/to/output
 npm run dev
