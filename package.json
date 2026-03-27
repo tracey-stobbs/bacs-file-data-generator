@@ -1,5 +1,5 @@
 {
-  "name": "bacs-file-data-generator",
+  "name": "file-data-generator",
   "version": "0.0.0-dev",
   "description": "Domain library for generating BACS style test data (EaziPay, SDDirect, Bacs18PaymentLines)",
   "type": "module",
@@ -19,17 +19,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "pretest": "npm run lint && npx prettier --check .",
-    "test": "vitest -c ./vitest.config.ts",
+    "test": "vitest run -c ./vitest.config.ts",
+    "test:coverage": "vitest run -c ./vitest.config.ts --coverage",
     "lint": "eslint . --ext .ts",
-    "generate-file": "node --loader ts-node/esm src/cli/generate.ts",
+    "generate-file": "node --loader ts-node/esm src/scripts/generate-file.ts",
     "dev-server": "node --loader ts-node/esm src/server.ts",
-    "start:generator": "node dist/server.js"
+    "serve": "node dist/server.js"
   },
   "dependencies": {
     "@faker-js/faker": "^9.0.0",
     "@fastify/multipart": "9.3.0",
     "fastify": "^5.6.2",
-    "lts": "^2.0.0",
     "luxon": "^3.5.0",
     "pino": "^9.0.0",
     "xmlbuilder2": "4.0.1"

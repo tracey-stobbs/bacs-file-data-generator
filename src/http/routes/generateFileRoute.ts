@@ -1,148 +1,146 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { generateFile } from "../../lib/factory.js";
-import { faker } from "@faker-js/faker";
-import type { GenerationRequest } from "../../types.js";
-import { DateTime } from "luxon";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { generateFile } from '../../lib/factory.js';
+import { ensureSeeded } from '../../lib/seeding/ensureSeeded.js';
+import type { GenerationRequest } from '../../types.js';
 
-interface BodySchema {
-  fileType?: string;
-  rows?: unknown;
-  seed?: unknown;
-  processingDate?: unknown;
-  originating?: {
-    sortCode?: string;
-    accountNumber?: string;
-    accountName?: string;
-  };
-  hasInvalidRows?: unknown;
-}
+// Removed legacy BodySchema in favor of inline validation within the route
 
 type ValidationError = { error: string; detail?: Record<string, unknown> };
 
 function isPositiveInt(val: unknown): val is number {
-  return typeof val === "number" && Number.isInteger(val) && val > 0;
+  return typeof val === 'number' && Number.isInteger(val) && val > 0;
 }
 
 function parseSeed(val: unknown): number | undefined | ValidationError {
   if (val == null) return undefined;
-  if (typeof val === "number" && Number.isInteger(val)) return val;
-  if (typeof val === "string" && /^\d+$/.test(val)) return Number(val);
-  return { error: "INVALID_SEED", detail: { provided: val } };
+  if (typeof val === 'number' && Number.isInteger(val)) return val;
+  if (typeof val === 'string' && /^\d+$/.test(val)) return Number(val);
+  return { error: 'INVALID_SEED', detail: { provided: val } };
 }
 
-function validateProcessingDate(
-  val: unknown,
-): string | undefined | ValidationError {
-  if (val == null) return undefined;
-  if (typeof val !== "string")
-    return { error: "INVALID_PROCESSING_DATE_TYPE", detail: { provided: val } };
-  const dt = DateTime.fromISO(val, { zone: "utc" });
-  if (!dt.isValid)
-    return {
-      error: "INVALID_PROCESSING_DATE_FORMAT",
-      detail: { provided: val },
-    };
-  return dt.toISODate();
-}
-
-function mapToGenerationRequest(
-  body: BodySchema,
-): GenerationRequest | ValidationError {
-  if (body.fileType !== "EaziPay")
-    return {
-      error: "UNSUPPORTED_FILE_TYPE",
-      detail: { fileType: body.fileType },
-    };
-  if (!isPositiveInt(body.rows))
-    return { error: "INVALID_ROWS", detail: { rows: body.rows } };
-  const seedParsed = parseSeed(body.seed);
-  if (typeof seedParsed === "object" && "error" in seedParsed)
-    return seedParsed;
-  const processingDateParsed = validateProcessingDate(body.processingDate);
-  if (
-    typeof processingDateParsed === "object" &&
-    "error" in processingDateParsed
-  )
-    return processingDateParsed;
-  return {
-    fileType: "EaziPay",
-    numberOfRows: body.rows as number,
-    hasInvalidRows:
-      body.hasInvalidRows === true || body.hasInvalidRows === "true",
-    originating: body.originating,
-  };
-}
+// legacy processing-date mapping removed; route validates inline per plan
 
 export function registerGenerateFileRoute(app: FastifyInstance): void {
+  // Single modern route aligned with implementation plan
   app.post(
-    "/generate-file",
+    '/generate',
     {
       schema: {
         body: {
-          type: "object",
+          type: 'object',
           properties: {
-            fileType: { type: "string", enum: ["EaziPay"] },
-            rows: { type: "integer", minimum: 1 },
-            seed: { anyOf: [{ type: "integer" }, { type: "string", pattern: "^\\d+$" }] },
-            processingDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-            originating: {
-              type: "object",
-              properties: {
-                sortCode: { type: "string" },
-                accountNumber: { type: "string" },
-                accountName: { type: "string" },
-              },
-              additionalProperties: true,
+            fileType: { type: 'string', enum: ['EaziPay'] },
+            rows: { type: 'integer', minimum: 1 },
+            format: { type: 'string', enum: ['CSV', 'BacsCSV', 'JSON'] },
+            fakerSeed: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            fixedTimestamp: { anyOf: [{ type: 'integer' }, { type: 'string', pattern: '^\\d+$' }] },
+            dateFormat: { type: 'string', enum: ['YYYY-MM-DD', 'DD/MM/YYYY', 'YYYYMMDD'] },
+            allowedTransactionCodes: {
+              type: 'array',
+              items: { type: 'string' },
             },
-            hasInvalidRows: { anyOf: [{ type: "boolean" }, { type: "string", enum: ["true", "false"] }] },
+            originating: {
+              type: 'object',
+              properties: {
+                sortCode: { type: 'string' },
+                accountNumber: { type: 'string' },
+                accountName: { type: 'string' },
+              },
+              additionalProperties: false,
+            },
+            processingDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
           },
-          required: ["fileType", "rows"],
-          additionalProperties: true,
+          required: ['fileType', 'rows'],
+          additionalProperties: false,
         },
         response: {
-          200: { type: "string" },
-          400: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
-          501: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
-          500: { type: "object", properties: { error: { type: "string" } }, required: ["error"] },
+          200: {
+            type: 'object',
+            properties: {
+              payload: { type: 'string' },
+              metadata: {
+                type: 'object',
+                properties: {
+                  fileType: { type: 'string' },
+                  rows: { type: 'integer' },
+                  format: { type: 'string' },
+                  seed: { type: 'integer' },
+                  timestamp: { type: 'integer' },
+                },
+                required: ['fileType', 'rows', 'format', 'seed', 'timestamp'],
+              },
+            },
+            required: ['payload', 'metadata'],
+          },
+          400: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          422: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
+          500: { type: 'object', properties: { error: { type: 'string' } }, required: ['error'] },
         },
       },
     },
     async (req: FastifyRequest, reply: FastifyReply): Promise<void> => {
-      const body = (req.body as BodySchema) || {};
-      const mapped = mapToGenerationRequest(body);
-      if ("error" in mapped) {
-        await reply
-          .status(mapped.error === "UNSUPPORTED_FILE_TYPE" ? 501 : 400)
-          .send(mapped);
+      const body = (req.body as Record<string, unknown>) || {};
+      const fileType = body.fileType;
+      const rows = body.rows;
+      const format = (body.format as string | undefined) || 'CSV';
+      const seedVal = body.fakerSeed;
+      const fixedTsVal = body.fixedTimestamp;
+
+      if (fileType !== 'EaziPay') {
+        await reply.status(400).send({ error: 'UNSUPPORTED_FILE_TYPE' });
         return;
       }
-      // Deterministic seeding
-      if (body.seed != null) {
-        const parsed = parseSeed(body.seed);
-        if (typeof parsed === "object") {
-          await reply.status(400).send(parsed);
-          return;
-        }
-        process.env.FAKER_SEED = String(parsed);
-        try {
-          faker.seed(parsed);
-        } catch {
-          /* ignore */
-        }
-      } else {
-        delete process.env.FAKER_SEED;
+      if (!isPositiveInt(rows)) {
+        await reply.status(422).send({ error: 'INVALID_ROWS' });
+        return;
       }
+      const parsedSeed = parseSeed(seedVal);
+      if (typeof parsedSeed === 'object' && 'error' in parsedSeed) {
+        await reply.status(400).send(parsedSeed);
+        return;
+      }
+      const timestamp =
+        typeof fixedTsVal === 'number'
+          ? fixedTsVal
+          : typeof fixedTsVal === 'string' && /^\d+$/.test(fixedTsVal)
+            ? Number(fixedTsVal)
+            : Date.now();
+
+      const seedUsed = parsedSeed != null ? ensureSeeded({ seed: parsedSeed }) : undefined;
+
       try {
+        const mapped: GenerationRequest & {
+          fakerSeed?: number;
+          fixedTimestamp?: number;
+          dateFormat?: string;
+          allowedTransactionCodes?: string[];
+          processingDate?: string;
+        } = {
+          fileType: 'EaziPay',
+          numberOfRows: rows as number,
+          originating: (body.originating as GenerationRequest['originating']) || undefined,
+          fakerSeed: seedUsed,
+          fixedTimestamp: timestamp,
+          dateFormat: (body.dateFormat as string | undefined) || undefined,
+          allowedTransactionCodes:
+            (body.allowedTransactionCodes as string[] | undefined) || undefined,
+          processingDate: (body.processingDate as string | undefined) || undefined,
+        };
         const result = await generateFile(mapped);
-        void reply.header("Content-Type", "text/csv");
-        void reply.header(
-          "Content-Disposition",
-          `attachment; filename="${mapped.fileType}-${Date.now()}.csv"`,
-        );
-        await reply.send(result.fileContent);
-      } catch (err) {
-        await reply.status(500).send({ error: "GENERATION_FAILED" });
+        const payload = result.fileContent;
+        await reply.send({
+          payload,
+          metadata: {
+            fileType: 'EaziPay',
+            rows: rows as number,
+            format,
+            seed: seedUsed ?? 0,
+            timestamp,
+          },
+        });
+      } catch {
+        await reply.status(500).send({ error: 'GENERATION_FAILED' });
       }
-    },
+    }
   );
 }

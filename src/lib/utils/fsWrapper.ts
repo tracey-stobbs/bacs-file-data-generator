@@ -1,5 +1,5 @@
-import { promises as fs } from "node:fs";
-import { dirname, join, normalize, resolve } from "node:path";
+import { promises as fs } from 'node:fs';
+import { dirname, join, normalize, resolve } from 'node:path';
 export interface FileSystem {
   ensureDir(path: string): Promise<void>;
   writeTextFile(path: string, content: string): Promise<void>;
@@ -35,21 +35,19 @@ export const nodeFs: FileSystem = {
       }
     }
     if (lastErr) throw lastErr;
-    await fs.writeFile(path, content, "utf8");
+    await fs.writeFile(path, content, 'utf8');
   },
 };
 export function safeJoinOutput(...segments: string[]): string {
   // Allow tests or callers to override the base output root via OUTPUT_ROOT env
   // variable. If provided, use an absolute resolved path; otherwise default to
   // a local `output` directory under the project.
-  const outputRoot = process.env.OUTPUT_ROOT
-    ? resolve(process.env.OUTPUT_ROOT)
-    : resolve("output");
+  const outputRoot = process.env.OUTPUT_ROOT ? resolve(process.env.OUTPUT_ROOT) : resolve('output');
   const fullPath = normalize(join(outputRoot, ...segments));
   // Ensure the computed path sits under the chosen output root to avoid
   // accidental writes outside the intended directory.
   if (!fullPath.startsWith(outputRoot)) {
-    throw new Error("Invalid output path");
+    throw new Error('Invalid output path');
   }
   return fullPath;
 }

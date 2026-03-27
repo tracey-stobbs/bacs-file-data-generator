@@ -1,19 +1,13 @@
 // Domain type definitions for generation & preview API (replaces legacy generic placeholders)
-export type SupportedFileType = "EaziPay";
-export type CommonTransactionCode =
-  | "01"
-  | "17"
-  | "18"
-  | "99"
-  | "0C"
-  | "0N"
-  | "0S";
+export type SupportedFileType = 'EaziPay' | 'SDDirect' | 'Bacs18PaymentLines';
+export type CommonTransactionCode = '01' | '17' | '18' | '99' | '0C' | '0N' | '0S';
 
 export interface BaseGenerationRequest {
   fileType: SupportedFileType;
   numberOfRows: number;
   hasInvalidRows?: boolean;
   sun?: string;
+  clientIdentifier?: string; // Optional client identifier for multi-client file naming
 }
 
 export interface OriginatingAccountDetails {
@@ -23,12 +17,29 @@ export interface OriginatingAccountDetails {
 }
 
 export interface EaziPayGenerationRequest extends BaseGenerationRequest {
-  fileType: "EaziPay";
+  fileType: 'EaziPay';
   dateFormat?: string; // One of EaziPayDateFormat; kept string to avoid circular import here.
+  allowedTransactionCodes?: string[]; // Filter rows to only these transaction codes
   originating?: OriginatingAccountDetails;
+  processingDate?: string; // ISO date string (YYYY-MM-DD) to override processing date for all rows
 }
 
-export type GenerationRequest = EaziPayGenerationRequest;
+export interface SDDirectGenerationRequest extends BaseGenerationRequest {
+  fileType: 'SDDirect';
+  originating?: OriginatingAccountDetails;
+  includeOptionalFields?: boolean;
+}
+
+export interface Bacs18GenerationRequest extends BaseGenerationRequest {
+  fileType: 'Bacs18PaymentLines';
+  bacs18Type?: 'DAILY' | 'MULTI';
+  originating?: OriginatingAccountDetails; // Optional - falls back to faker-generated values
+}
+
+export type GenerationRequest =
+  | EaziPayGenerationRequest
+  | SDDirectGenerationRequest
+  | Bacs18GenerationRequest;
 
 export interface GeneratedFileResult {
   filePath: string;
@@ -54,7 +65,7 @@ export interface PreviewMetadata {
   rows?: number;
   columns?: number;
   header?: string; // e.g. NH/H
-  validity?: "I" | "V";
+  validity?: 'I' | 'V';
   sun?: string;
 }
 
@@ -68,9 +79,7 @@ export interface RowBuildResult {
   row: { fields: string[]; asLine: string };
 }
 
-export interface AdapterInterface<
-  TReq extends BaseGenerationRequest = BaseGenerationRequest,
-> {
+export interface AdapterInterface<TReq extends BaseGenerationRequest = BaseGenerationRequest> {
   buildPreviewRows(req: TReq): string[][];
   serialize(rows: string[][]): string;
   previewMeta(rows: string[][], req: TReq): PreviewMetadata;

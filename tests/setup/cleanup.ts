@@ -1,8 +1,8 @@
-import { beforeAll, afterAll } from "vitest";
-import { promises as fs } from "fs";
-import path from "path";
+import { beforeAll, afterAll } from 'vitest';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-const out = path.resolve(process.cwd(), "output");
+const out = path.resolve(process.cwd(), 'output');
 
 async function removeOut(): Promise<void> {
   try {

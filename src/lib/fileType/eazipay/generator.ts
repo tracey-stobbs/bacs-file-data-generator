@@ -1,22 +1,18 @@
-import { faker } from "@faker-js/faker";
-import { DateTime } from "luxon";
-import { EaziPayValidator } from "../../validators/eazipayValidator.js";
-import {
-  formatEaziPayDate,
-  pickRandomEaziPayFormat,
-} from "../../utils/dateFormatter.js";
-import { AddWorkingDays } from "../../utils/calendar.js";
-import { IsWorkingDay } from "../../utils/calendar.js";
-import { generateFileWithFs } from "../../fileWriter/fileWriter.js";
-import type { EaziPayRow } from "./types.js";
+import { faker } from '@faker-js/faker';
+import { DateTime } from 'luxon';
+import { EaziPayValidator } from '../../validators/eazipayValidator.js';
+import { formatEaziPayDate, pickRandomEaziPayFormat } from '../../utils/dateFormatter.js';
+import { AddWorkingDays } from '../../utils/calendar.js';
+import { generateFileWithFs } from '../../fileWriter/fileWriter.js';
+import type { EaziPayRow } from './types.js';
 import type {
   EaziPayGenerationRequest,
   PreviewResult,
   PreviewRow,
   PreviewHeaderField,
-} from "../../../types.js";
-import type { FileSystem } from "../../utils/fsWrapper.js";
-import type { EaziPayDateFormat } from "../../utils/dateFormatter.js";
+} from '../../../types.js';
+import type { FileSystem } from '../../utils/fsWrapper.js';
+import type { EaziPayDateFormat } from '../../utils/dateFormatter.js';
 function generatePaymentReference(): string {
   let ref = faker.string.alphanumeric(faker.number.int({ min: 7, max: 17 }));
   while (
@@ -36,80 +32,50 @@ function generateAmount(transactionCode: string): number {
 export function generateProcessingDate(
   transactionCode: string,
   dateFormat: EaziPayDateFormat,
+  overrideDate?: string | null
 ): string {
-  const now = DateTime.now();
-  const today = now.startOf("day");
-  let targetDate: DateTime;
-  if (EaziPayValidator.isContraCode(transactionCode)) {
-    // If generation time is before 16:00 local, contra processing date is next working day.
-    // If at or after 16:00, contra processing date is two working days.
-    const thresholdHour = 16; // 4pm
-    const useDays = now.hour < thresholdHour ? 1 : 2;
-    targetDate = AddWorkingDays(today, useDays);
-    // Ensure contra processing date is not beyond 30 calendar days
-    const maxDate = today.plus({ days: 30 });
-    if (targetDate > maxDate) {
-      // Move back to the latest working day on or before maxDate
-      let candidate = maxDate;
-      while (!IsWorkingDay(candidate)) {
-        candidate = candidate.minus({ days: 1 });
-      }
-      targetDate = candidate;
-    }
-  } else {
-    // Ensure working days is bounded to [2,30]
-    let workingDays = faker.number.int({ min: 2, max: 30 });
-    if (workingDays < 2) workingDays = 2;
-    if (workingDays > 30) workingDays = 30;
-    targetDate = AddWorkingDays(today, workingDays);
-    // Ensure the chosen processing date is no more than 30 calendar days from today.
-    const maxDate = today.plus({ days: 30 });
-    if (targetDate > maxDate) {
-      // If it falls beyond the calendar limit, move back to the latest working day on or before maxDate
-      let candidate = maxDate;
-      while (!IsWorkingDay(candidate)) {
-        candidate = candidate.minus({ days: 1 });
-      }
-      targetDate = candidate;
-    }
+  // If an override date is provided, use it regardless of transaction code
+  if (overrideDate) {
+    return overrideDate;
   }
+
+  // Default behavior when no override: use today + 1 working day for all transaction codes
+  const today = DateTime.now().startOf('day');
+  const targetDate = AddWorkingDays(today, 1);
   return formatEaziPayDate(targetDate, dateFormat);
 }
 function generateSunNumber(transactionCode: string): string {
-  if (!EaziPayValidator.isSunNumberAllowed(transactionCode)) return "";
+  if (!EaziPayValidator.isSunNumberAllowed(transactionCode)) return '';
   if (faker.datatype.boolean()) {
     return faker.string.alphanumeric(faker.number.int({ min: 5, max: 10 }));
   }
-  return "";
+  return '';
 }
-function generateInvalidFieldValue(
-  fieldName: string,
-  transactionCode: string,
-): string | number {
+function generateInvalidFieldValue(fieldName: string, transactionCode: string): string | number {
   switch (fieldName) {
-    case "transactionCode":
-      return faker.helpers.arrayElement(["XX", "INVALID", "00"]);
-    case "originatingSortCode":
-    case "destinationSortCode":
+    case 'transactionCode':
+      return faker.helpers.arrayElement(['XX', 'INVALID', '00']);
+    case 'originatingSortCode':
+    case 'destinationSortCode':
       return faker.string.alpha({ length: 6 });
-    case "originatingAccountNumber":
-    case "destinationAccountNumber":
+    case 'originatingAccountNumber':
+    case 'destinationAccountNumber':
       return faker.string.alpha({ length: 8 });
-    case "destinationAccountName":
+    case 'destinationAccountName':
       return faker.string.alpha({ length: 25 });
-    case "bacsReference":
-      return "DDIC" + faker.string.alphanumeric(5);
-    case "amount":
+    case 'bacsReference':
+      return 'DDIC' + faker.string.alphanumeric(5);
+    case 'amount':
       return -999;
-    case "fixedZero":
+    case 'fixedZero':
       return faker.number.int({ min: 1, max: 10 });
-    case "sunNumber":
+    case 'sunNumber':
       if (!EaziPayValidator.isSunNumberAllowed(transactionCode)) {
         return faker.string.alphanumeric(5);
       }
       return faker.string.alpha({ length: 50 });
     default:
-      return "INVALID";
+      return 'INVALID';
   }
 }
 export function generateValidEaziPayRow(
@@ -120,29 +86,29 @@ export function generateValidEaziPayRow(
       accountName?: string;
       processingDate?: string | null;
     };
+    allowedCodes?: string[];
   },
-  dateFormat: EaziPayDateFormat,
+  dateFormat: EaziPayDateFormat
 ): EaziPayRow {
-  const transactionCode = faker.helpers.arrayElement(
-    EaziPayValidator.allowedTransactionCodes as readonly string[],
-  ) as EaziPayRow["transactionCode"];
+  const codesPool =
+    req.allowedCodes && req.allowedCodes.length > 0
+      ? req.allowedCodes
+      : Array.from(EaziPayValidator.allowedTransactionCodes);
+  const transactionCode = faker.helpers.arrayElement(codesPool) as EaziPayRow['transactionCode'];
   return {
     transactionCode,
-    originatingSortCode:
-      req.originating?.sortCode ?? faker.finance.routingNumber().slice(0, 6),
-    originatingAccountNumber:
-      req.originating?.accountNumber ?? faker.finance.accountNumber(8),
+    originatingSortCode: req.originating?.sortCode ?? faker.finance.routingNumber().slice(0, 6),
+    originatingAccountNumber: req.originating?.accountNumber ?? faker.finance.accountNumber(8),
     destinationSortCode: faker.finance.routingNumber().slice(0, 6),
     destinationAccountNumber: faker.finance.accountNumber(8),
-    destinationAccountName: sanitizeAccountName(faker.company.name()).slice(
-      0,
-      18,
-    ),
+    destinationAccountName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     fixedZero: 0,
     amount: generateAmount(transactionCode),
-    processingDate:
-      req.originating?.processingDate ??
-      generateProcessingDate(transactionCode, dateFormat),
+    processingDate: generateProcessingDate(
+      transactionCode,
+      dateFormat,
+      req.originating?.processingDate
+    ),
     empty: undefined,
     // Ensure SUN Name does not contain commas or non-ASCII characters which would
     // break the CSV (fields are not quoted). Reuse the same sanitiser used for
@@ -150,7 +116,7 @@ export function generateValidEaziPayRow(
     sunName: sanitizeAccountName(faker.company.name()).slice(0, 18),
     bacsReference: generatePaymentReference(),
     // Never include SUN number in generated CSVs (sensitive/externally-supplied)
-    sunNumber: "",
+    sunNumber: '',
   };
 }
 export function generateInvalidEaziPayRow(
@@ -161,94 +127,87 @@ export function generateInvalidEaziPayRow(
       accountName?: string;
       processingDate?: string | null;
     };
+    allowedCodes?: string[];
   },
-  dateFormat: EaziPayDateFormat,
+  dateFormat: EaziPayDateFormat
 ): EaziPayRow {
   const base = generateValidEaziPayRow(req, dateFormat);
   const row: EaziPayRow = { ...base };
   const invalidatableFields: Array<
     | keyof EaziPayRow
-    | "amount"
-    | "fixedZero"
-    | "sunNumber"
-    | "transactionCode"
-    | "destinationSortCode"
-    | "destinationAccountNumber"
-    | "destinationAccountName"
-    | "bacsReference"
+    | 'amount'
+    | 'fixedZero'
+    | 'sunNumber'
+    | 'transactionCode'
+    | 'destinationSortCode'
+    | 'destinationAccountNumber'
+    | 'destinationAccountName'
+    | 'bacsReference'
   > = [
-    "transactionCode",
-    "destinationAccountNumber",
-    "destinationAccountName",
-    "bacsReference",
-    "amount",
-    "fixedZero",
-    "sunNumber",
+    'transactionCode',
+    'destinationAccountNumber',
+    'destinationAccountName',
+    'bacsReference',
+    'amount',
+    'fixedZero',
+    'sunNumber',
   ];
   const numInvalid = faker.number.int({ min: 1, max: 3 });
-  const fieldsToInvalidate = faker.helpers
-    .shuffle(invalidatableFields)
-    .slice(0, numInvalid);
+  const fieldsToInvalidate = faker.helpers.shuffle(invalidatableFields).slice(0, numInvalid);
   // Ensure at least one of the commonly-detected invalid fields is included so
   // simple heuristic tests (sort code alphabetic / negative amount / txn 'XX')
   // reliably detect an invalid row.
-  const detectionFields = ["transactionCode", "destinationSortCode", "amount"];
+  const detectionFields = ['transactionCode', 'destinationSortCode', 'amount'];
   if (!fieldsToInvalidate.some((f) => detectionFields.includes(String(f)))) {
     // Prefer destinationSortCode since it's non-destructive elsewhere.
-    fieldsToInvalidate.push("destinationSortCode");
+    fieldsToInvalidate.push('destinationSortCode');
   }
   for (const fieldName of fieldsToInvalidate) {
     switch (fieldName) {
-      case "transactionCode":
+      case 'transactionCode':
         row.transactionCode = generateInvalidFieldValue(
           fieldName,
-          row.transactionCode,
-        ) as EaziPayRow["transactionCode"];
+          row.transactionCode
+        ) as EaziPayRow['transactionCode'];
         break;
-      case "destinationSortCode":
-        row.destinationSortCode = String(
-          generateInvalidFieldValue(fieldName, row.transactionCode),
-        );
+      case 'destinationSortCode':
+        row.destinationSortCode = String(generateInvalidFieldValue(fieldName, row.transactionCode));
         break;
-      case "destinationAccountNumber":
+      case 'destinationAccountNumber':
         row.destinationAccountNumber = String(
-          generateInvalidFieldValue(fieldName, row.transactionCode),
+          generateInvalidFieldValue(fieldName, row.transactionCode)
         );
         break;
-      case "destinationAccountName":
+      case 'destinationAccountName':
         row.destinationAccountName = sanitizeAccountName(
-          String(generateInvalidFieldValue(fieldName, row.transactionCode)),
+          String(generateInvalidFieldValue(fieldName, row.transactionCode))
         ).slice(0, 18);
         break;
-      case "bacsReference":
-        row.bacsReference = String(
-          generateInvalidFieldValue(fieldName, row.transactionCode),
-        );
+      case 'bacsReference':
+        row.bacsReference = String(generateInvalidFieldValue(fieldName, row.transactionCode));
         break;
-      case "amount":
-        row.amount = Number(
-          generateInvalidFieldValue(fieldName, row.transactionCode),
-        );
+      case 'amount':
+        row.amount = Number(generateInvalidFieldValue(fieldName, row.transactionCode));
         break;
-      case "fixedZero":
+      case 'fixedZero':
         row.fixedZero = 0;
         break;
-      case "sunNumber":
+      case 'sunNumber':
         // Intentionally leave sunNumber blank even for invalid rows
-        row.sunNumber = "";
+        row.sunNumber = '';
         break;
     }
   }
   return row;
 }
 export function sanitizeAccountName(name: string): string {
-  if (!name) return "";
+  if (!name) return '';
   // Strip non-printable or non-ASCII characters. Keep printable ASCII range (0x20 - 0x7E).
   // Also remove double quotes and commas which can break downstream CSV parsing.
   const cleaned = name
-    .replace(/[^\x20-\x7E]/g, "")
-    .replace(/[",]+/g, "")
-    .replace(/\s+/g, " ")
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/[",]+/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
   return cleaned;
 }
@@ -263,11 +222,11 @@ export function formatEaziPayRowAsArray(fields: EaziPayRow): string[] {
     fields.fixedZero.toString(),
     fields.amount.toString(),
     fields.processingDate,
-    fields.empty === undefined ? "" : String(fields.empty),
+    fields.empty === undefined ? '' : String(fields.empty),
     fields.sunName,
     fields.bacsReference,
-    fields.sunNumber ?? "",
-    "",
+    fields.sunNumber ?? '',
+    '',
   ];
 }
 export const toArray = formatEaziPayRowAsArray;
@@ -275,6 +234,7 @@ export const eaziPayAdapter = {
   buildPreviewRows(params: {
     numberOfRows?: number;
     dateFormat?: string;
+    allowedTransactionCodes?: string[];
     hasInvalidRows?: boolean;
     originating?: {
       sortCode?: string;
@@ -284,16 +244,26 @@ export const eaziPayAdapter = {
       sunNumber?: string;
     };
     sun?: string;
+    processingDate?: string;
   }): string[][] {
     const numberOfRows = params.numberOfRows ?? 15;
     const dateFormat: EaziPayDateFormat =
-      (params.dateFormat as EaziPayDateFormat | undefined) ||
-      pickRandomEaziPayFormat();
+      (params.dateFormat as EaziPayDateFormat | undefined) || pickRandomEaziPayFormat();
+    const allowedCodes =
+      params.allowedTransactionCodes && params.allowedTransactionCodes.length > 0
+        ? params.allowedTransactionCodes
+        : undefined;
     const rows: string[][] = [];
     const invalidRows = params.hasInvalidRows
       ? Math.min(numberOfRows - 1, Math.ceil((numberOfRows - 1) / 2))
       : 0;
-    const internalReq = { originating: params.originating };
+    const internalReq = {
+      originating: {
+        ...params.originating,
+        processingDate: params.processingDate,
+      },
+      allowedCodes,
+    };
     for (let i = 0; i < numberOfRows; i++) {
       const shouldBeInvalid =
         params.hasInvalidRows && invalidRows > 0 && i >= 1 && i <= invalidRows;
@@ -308,8 +278,8 @@ export const eaziPayAdapter = {
     // consistent with programmatic callers.
     const suppliedSunName = params.originating?.sunName
       ? sanitizeAccountName(String(params.originating.sunName)).slice(0, 18)
-      : "";
-    if (suppliedSunName && suppliedSunName !== "") {
+      : '';
+    if (suppliedSunName && suppliedSunName !== '') {
       for (let i = 0; i < rows.length; i++) {
         // Ensure the row has at least 11 columns
         if (rows[i].length >= 11) rows[i][10] = suppliedSunName;
@@ -319,25 +289,22 @@ export const eaziPayAdapter = {
   },
   serialize(rows: string[][]): string {
     // Ensure trailing newline so tools like `wc -l` report the correct number of rows.
-    const body = rows.map((r) => r.join(",")).join("\n");
-    return body.endsWith("\n") ? body : body + "\n";
+    const body = rows.map((r) => r.join(',')).join('\n');
+    return body.endsWith('\n') ? body : body + '\n';
   },
-  previewMeta(
-    rows: string[][],
-    params: { hasInvalidRows?: boolean; sun?: string },
-  ) {
-    const validity: "I" | "V" = params.hasInvalidRows ? "I" : "V";
+  previewMeta(rows: string[][], params: { hasInvalidRows?: boolean; sun?: string }) {
+    const validity: 'I' | 'V' = params.hasInvalidRows ? 'I' : 'V';
     return {
       rows: rows.length,
       columns: 14,
-      header: "NH",
+      header: 'NH',
       validity,
-      fileType: "EaziPay" as const,
+      fileType: 'EaziPay' as const,
       sun: params.sun,
     };
   },
   buildRow(params: {
-    validity?: "invalid" | "valid";
+    validity?: 'invalid' | 'valid';
     dateFormat?: string;
     originating?: {
       sortCode?: string;
@@ -352,72 +319,82 @@ export const eaziPayAdapter = {
         accountName: params.originating?.accountName,
       },
     };
-    const effectiveFormat =
-      (params.dateFormat as EaziPayDateFormat | undefined) ?? "YYYY-MM-DD";
+    const effectiveFormat = (params.dateFormat as EaziPayDateFormat | undefined) ?? 'YYYY-MM-DD';
     const data =
-      params.validity === "invalid"
+      params.validity === 'invalid'
         ? generateInvalidEaziPayRow(req, effectiveFormat)
         : generateValidEaziPayRow(req, effectiveFormat);
     const fields = formatEaziPayRowAsArray(data);
-    return { row: { fields, asLine: fields.join(",") } };
+    return { row: { fields, asLine: fields.join(',') } };
   },
   parse(content: string) {
     const lines = content.split(/\r?\n/).filter((l) => l.length > 0);
     const rows = lines.map((line, i) => ({
       index: i,
       asLine: line,
-      fields: line.split(","),
+      fields: line.split(','),
     }));
     return { rows };
   },
 } as const;
-export async function generateFile(req: {
-  numberOfRows?: number;
-  dateFormat?: string;
-  hasInvalidRows?: boolean;
-  originating?: {
-    sortCode?: string;
-    accountNumber?: string;
-    accountName?: string;
-  };
-  sun?: string;
-}): Promise<{ filePath: string; fileContent: string }> {
-  const rows = eaziPayAdapter.buildPreviewRows(req);
-  const serialized = eaziPayAdapter.serialize(rows);
+export async function generateFile(
+  req: EaziPayGenerationRequest & { determinism?: DeterminismContext },
+  opts?: { determinism?: { rng: () => number; now: () => number } }
+): Promise<{ filePath: string; fileContent: string }> {
+  const input: EaziPayInput = { rows: req.numberOfRows ?? 0 };
+  const validation = validateEaziPayInput(input);
+  if (!validation.isValid) {
+    throw new Error(validation.message ?? 'Invalid EaziPay input');
+  }
+  const rows2D = eaziPayAdapter.buildPreviewRows(req);
+  const serialized = eaziPayAdapter.serialize(rows2D);
   const wrapper = {
-    rows,
+    rows: rows2D,
     serialize: () => serialized,
     fileContent: serialized,
-    numberOfRows: req.numberOfRows ?? rows.length,
+    numberOfRows: req.numberOfRows ?? rows2D.length,
     hasInvalidRows: req.hasInvalidRows,
   };
-  const fsMod: { nodeFs: FileSystem } = await import(
-    "../../utils/fsWrapper.js"
-  );
-  return generateFileWithFs(wrapper, fsMod.nodeFs, req.sun || "DEFAULT");
+  const fsMod: { nodeFs: FileSystem } = await import('../../utils/fsWrapper.js');
+  return generateFileWithFs(wrapper, fsMod.nodeFs, req.sun || 'DEFAULT', {
+    determinism: opts?.determinism,
+  });
 }
-export function previewRows(
-  req: EaziPayGenerationRequest,
-  _invalid: boolean,
-): PreviewResult {
+import { validateEaziPayInput } from './validation.js';
+import { buildEaziPayRows } from './rowBuilder.js';
+import type { DeterminismContext } from '../../determinism/context.js';
+import type { EaziPayInput, EaziPaySimpleRow } from './types.js';
+
+export function previewEaziPayRows(
+  input: EaziPayInput,
+  ctx: DeterminismContext
+): EaziPaySimpleRow[] {
+  const validation = validateEaziPayInput(input);
+  if (!validation.isValid) {
+    throw new Error(validation.message ?? 'Invalid EaziPay input');
+  }
+  const rows = buildEaziPayRows(input.rows, ctx);
+  return rows;
+}
+export function previewRows(req: EaziPayGenerationRequest, _invalid: boolean): PreviewResult {
   // touch the second param so lint doesn't complain while keeping signature consistent with other generators
   void _invalid;
   const rows2D: string[][] = eaziPayAdapter.buildPreviewRows(req);
   const headers: PreviewHeaderField[] = [
-    "Transaction Code",
-    "Originating Sort Code",
-    "Originating Account Number",
-    "Destination Sort Code",
-    "Destination Account Number",
-    "Destination Account Name",
-    "Fixed Zero",
-    "Amount",
-    "Processing Date",
-    "Empty",
-    "SUN Name",
-    "Payment Reference",
-    "SUN Number",
-    "Empty Trailer 1",
+    'Transaction Code',
+    'Originating Sort Code',
+    'Originating Account Number',
+    'Destination Sort Code',
+    'Destination Account Number',
+    'Destination Account Name',
+    'Fixed Zero',
+    'Amount',
+    'Processing Date',
+    'Empty',
+    'SUN Name',
+    'Payment Reference',
+    'SUN Number',
+    'Empty Trailer 1',
   ].map((h, i) => ({ name: h, value: i }));
   const previewRowsMapped: PreviewRow[] = rows2D.map((r) => ({
     fields: r.map((v, i) => ({ value: v, order: i })),
@@ -460,13 +437,15 @@ export function generateEaziPayRowsConstrained(params: {
     }
   }
   const dateFormat: EaziPayDateFormat =
-    (params.dateFormat as EaziPayDateFormat | undefined) || "YYYY-MM-DD";
+    (params.dateFormat as EaziPayDateFormat | undefined) || 'YYYY-MM-DD';
   const rows: string[][] = [];
   const count = params.numberOfRows ?? 10;
   const allowed =
     Array.isArray(params.allowedTransactionCodes) && params.allowedTransactionCodes.length > 0
       ? params.allowedTransactionCodes
-      : (() => { throw new Error("allowedTransactionCodes must be provided to generator and be non-empty"); })();
+      : (() => {
+          throw new Error('allowedTransactionCodes must be provided to generator and be non-empty');
+        })();
   const req = { originating: params.originating };
   // SUN Name is required for EaziPay generation. Fail fast if it's not supplied.
   // Ensure we have a sunName for internal generation. Callers are encouraged to supply one;
@@ -480,41 +459,33 @@ export function generateEaziPayRowsConstrained(params: {
     sunName?: string;
     processingDate?: string;
   };
-  params.originating = (params.originating ??
-    {}) as unknown as OriginatingLocal;
+  params.originating = (params.originating ?? {}) as unknown as OriginatingLocal;
   const originatingRef = params.originating as OriginatingLocal;
-  if (!originatingRef.sunName || String(originatingRef.sunName).trim() === "") {
-    originatingRef.sunName = "Local Generated";
+  if (!originatingRef.sunName || String(originatingRef.sunName).trim() === '') {
+    originatingRef.sunName = 'Local Generated';
   }
   // First, generate rows normally
   for (let i = 0; i < count; i++) {
     // If a fixed processingDate is supplied, ensure the generator uses it
     if (params.processingDate) {
       // ensure req.originating exists (don't change its declared type) and then set processingDate
-      if (!req.originating)
-        (req as unknown as Record<string, unknown>).originating = {};
-      (
-        req.originating as unknown as { processingDate?: string }
-      ).processingDate = params.processingDate;
+      if (!req.originating) (req as unknown as Record<string, unknown>).originating = {};
+      (req.originating as unknown as { processingDate?: string }).processingDate =
+        params.processingDate;
     }
-    const rowObj = generateValidEaziPayRow(
-      req,
-      dateFormat,
-    ) as unknown as EaziPayRow;
+    const rowObj = generateValidEaziPayRow(req, dateFormat) as unknown as EaziPayRow;
     if (!allowed.includes(String(rowObj.transactionCode))) {
       // Deterministic pick based on index to keep distribution stable across seeds
-      rowObj.transactionCode = allowed[
-        i % allowed.length
-      ] as EaziPayRow["transactionCode"];
+      rowObj.transactionCode = allowed[i % allowed.length] as EaziPayRow['transactionCode'];
       // Recalculate amount and processingDate based on the final transaction code
       rowObj.amount = generateAmount(String(rowObj.transactionCode));
-      // Only recalculate processingDate when no explicit fixed processingDate was requested.
-      if (!(params && params.processingDate)) {
-        rowObj.processingDate = generateProcessingDate(
-          String(rowObj.transactionCode),
-          dateFormat,
-        );
-      }
+      // When a fixed processingDate is supplied, always use it regardless of transaction code.
+      // When no fixed date is supplied, generate a new one based on the (possibly changed) transaction code.
+      rowObj.processingDate = generateProcessingDate(
+        String(rowObj.transactionCode),
+        dateFormat,
+        params.processingDate
+      );
     }
     rows.push(formatEaziPayRowAsArray(rowObj));
   }
@@ -526,28 +497,26 @@ export function generateEaziPayRowsConstrained(params: {
   const includeSun = !!params.includeSunNumber;
   const suppliedSunName = params.originating?.sunName
     ? sanitizeAccountName(String(params.originating.sunName)).slice(0, 18)
-    : "";
+    : '';
   const suppliedSunNumberExact = params.originating?.sunNumber
     ? String(params.originating.sunNumber).trim()
     : null;
   for (let i = 0; i < rows.length; i++) {
     const tcode = String(rows[i][0]);
     // SUN Name: always use originating.sunName (required) for column 11
-    if (suppliedSunName && suppliedSunName !== "") {
+    if (suppliedSunName && suppliedSunName !== '') {
       rows[i][10] = suppliedSunName;
     }
     // SUN Number: populate only if includeSun is true and transaction code allows it
     if (includeSun) {
-      if (suppliedSunNumberExact && suppliedSunNumberExact !== "") {
+      if (suppliedSunNumberExact && suppliedSunNumberExact !== '') {
         // only populate exact supplied number when the transaction code allows a SUN
-        rows[i][12] = EaziPayValidator.isSunNumberAllowed(tcode)
-          ? suppliedSunNumberExact
-          : "";
+        rows[i][12] = EaziPayValidator.isSunNumberAllowed(tcode) ? suppliedSunNumberExact : '';
       } else {
         rows[i][12] = generateSunNumber(tcode);
       }
     } else {
-      rows[i][12] = "";
+      rows[i][12] = '';
     }
   }
   return rows;
@@ -588,21 +557,15 @@ export function generateEaziPayRowsConstrainedWithMeta(params: {
     ? String(params.originating.sunName).slice(0, 18)
     : null;
   const actualSun =
-    suppliedSun && suppliedSun !== ""
+    suppliedSun && suppliedSun !== ''
       ? suppliedSun
-      : rows &&
-          rows.length > 0 &&
-          rows[0][12] &&
-          String(rows[0][12]).trim() !== ""
+      : rows && rows.length > 0 && rows[0][12] && String(rows[0][12]).trim() !== ''
         ? String(rows[0][12])
         : null;
   const actualSunName =
-    suppliedSunName && suppliedSunName !== ""
+    suppliedSunName && suppliedSunName !== ''
       ? suppliedSunName
-      : rows &&
-          rows.length > 0 &&
-          rows[0][10] &&
-          String(rows[0][10]).trim() !== ""
+      : rows && rows.length > 0 && rows[0][10] && String(rows[0][10]).trim() !== ''
         ? String(rows[0][10])
         : null;
   // Normalize metadata keys we want to record
